@@ -31,6 +31,8 @@
 
 #### 2. SSH 登录到路由器
 
+如果你的小米路由器还没有开启 SSH，可以参考 Juewuy 的教程：[小米路由设备破解固化永久SSH教程](https://jwsc.eu.org/gDyfIPSsZ/)。不同型号和固件的操作方式可能不同，操作前请先确认教程适用于你的设备，并自行评估刷写、解锁或固化 SSH 的风险。
+
 在电脑上打开 Terminal、Windows Terminal 或 PowerShell，然后 SSH 登录到路由器。
 
 下面的地址只是示例：
@@ -192,9 +194,10 @@ make build-arm64
 - SideStore / LocalDevVPN 行为
 - StosVPN
 - xddxdd/sidestore-vpn
+- [Juewuy 的小米路由设备破解固化永久 SSH 教程](https://jwsc.eu.org/gDyfIPSsZ/)
 - [蓝天关于跨局域网使用 SideStore 且不依赖 StosVPN 的文章](https://lantian.pub/article/modify-computer/sidestore-without-stosvpn-across-lan.lantian/)
 
-本项目与 SideStore、LiveContainer、StosVPN、xddxdd 或蓝天没有从属关系。
+本项目与 SideStore、LiveContainer、StosVPN、xddxdd、Juewuy 或蓝天没有从属关系。
 
 ### 许可证
 
@@ -232,6 +235,8 @@ Before installing, make the iPhone LAN IP stable:
 Write down that fixed iPhone IP, for example `192.168.31.100`.
 
 #### 2. SSH into the router
+
+If SSH is not enabled on your Xiaomi router yet, you can refer to Juewuy's guide: [Xiaomi router permanent SSH tutorial](https://jwsc.eu.org/gDyfIPSsZ/). Steps may differ across router models and firmware versions. Make sure the guide applies to your device and evaluate the risks of unlocking, flashing, or making SSH persistent before proceeding.
 
 Open Terminal, Windows Terminal, or PowerShell on your computer, then SSH into the router.
 
@@ -394,9 +399,10 @@ Inspired by:
 - SideStore / LocalDevVPN behavior
 - StosVPN
 - xddxdd/sidestore-vpn
+- [Juewuy's Xiaomi router permanent SSH tutorial](https://jwsc.eu.org/gDyfIPSsZ/)
 - [Lan Tian's write-up on using SideStore without StosVPN across LAN](https://lantian.pub/article/modify-computer/sidestore-without-stosvpn-across-lan.lantian/)
 
-This project is not affiliated with SideStore, LiveContainer, StosVPN, xddxdd, or Lantian.
+This project is not affiliated with SideStore, LiveContainer, StosVPN, xddxdd, Juewuy, or Lantian.
 
 ### License
 
