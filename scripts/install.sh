@@ -1,13 +1,13 @@
 #!/bin/sh
-# Interactive installer for Xiaomi Router Auto-Sign.
+# Interactive installer for Xiaomi Router 7-Day Refresh.
 # Run this script on the router after logging in through SSH.
 
 set -u
 
-REPO="${REPO:-XianShengXingGe/xiaomi-router-autosign}"
+REPO="${REPO:-XianShengXingGe/xiaomi-router-7day-refresh}"
 VERSION="${VERSION:-latest}"
 INSTALL_DIR="${INSTALL_DIR:-/data}"
-APP_NAME="${APP_NAME:-xiaomi-router-autosign}"
+APP_NAME="${APP_NAME:-xiaomi-router-7day-refresh}"
 APP="$INSTALL_DIR/$APP_NAME"
 START_SCRIPT="$INSTALL_DIR/$APP_NAME-start.sh"
 STATUS_SCRIPT="$INSTALL_DIR/$APP_NAME-status.sh"
@@ -140,7 +140,7 @@ EOF
 }
 
 main() {
-  echo "Xiaomi Router Auto-Sign installer"
+  echo "Xiaomi Router 7-Day Refresh installer"
   echo
   echo "Run this after SSH login to your router."
   echo "Example only: ssh root@192.168.31.1"

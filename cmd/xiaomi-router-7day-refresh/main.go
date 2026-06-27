@@ -49,7 +49,7 @@ func main() {
 	}
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-	log.Printf("xiaomi-router-autosign starting: iface=%s target=%s", cfg.iface, cfg.target.String())
+	log.Printf("xiaomi-router-7day-refresh starting: iface=%s target=%s", cfg.iface, cfg.target.String())
 
 	f, actualName, err := openTun(cfg.iface)
 	if err != nil {

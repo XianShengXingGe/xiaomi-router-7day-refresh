@@ -4,7 +4,7 @@
 
 ### 项目名称
 
-**xiaomi-router-autosign**
+**xiaomi-router-7day-refresh**
 
 ### 一句话说明
 
@@ -19,7 +19,7 @@ SideStore / LiveContainer 在刷新 App 时，通常需要 iPhone 端开启 Stos
 3. 家庭 Wi-Fi 场景下，路由器通常已经具备持续在线、可控、可转发流量的条件。
 4. 如果能把这部分网络处理逻辑放到路由器上，iPhone 连接家里 Wi-Fi 后就可以更接近“自动可用”的体验。
 
-因此，这个项目的目标不是替代 SideStore / LiveContainer，也不是绕过认证或签名机制，而是把原本在 iPhone 端 VPN 中完成的局域网包处理逻辑，转移到可控的路由器环境中执行。
+因此，这个项目的目标不是替代 SideStore / LiveContainer，也不是绕过认证、证书或 App ID 限制，而是把原本在 iPhone 端 VPN 中完成的局域网包处理逻辑，转移到可控的路由器环境中执行。
 
 ### 背景信息
 
@@ -111,7 +111,7 @@ iPhone:
 本项目不解决以下问题：
 
 1. 不提供 SideStore / LiveContainer 安装服务。
-2. 不绕过 Apple ID、签名、证书或 App ID 限制。
+2. 不绕过 Apple ID、证书或 App ID 限制。
 3. 不生成或替代 pairing file。
 4. 不处理 Anisette 服务异常。
 5. 不保证所有 iOS / SideStore / LiveContainer 版本均兼容。
@@ -122,7 +122,7 @@ iPhone:
 ### 核心文件
 
 ```text
-cmd/xiaomi-router-autosign/main.go
+cmd/xiaomi-router-7day-refresh/main.go
 ```
 
 用户态 TUN 程序，负责读取、改写、写回 IPv4 包。
@@ -156,7 +156,7 @@ scripts/cleanup.sh
 部署成功后，检查状态应类似：
 
 ```text
-/data/xiaomi-router-autosign -iface sidestore -target 10.7.0.1
+/data/xiaomi-router-7day-refresh -iface sidestore -target 10.7.0.1
 10.7.0.1 dev sidestore
 FORWARD: br-lan -> sidestore
 FORWARD: sidestore -> br-lan
@@ -177,7 +177,7 @@ NAT PREROUTING: RETURN br-lan 10.7.0.1
 
 ### Project name
 
-**xiaomi-router-autosign**
+**xiaomi-router-7day-refresh**
 
 ### One-sentence summary
 
@@ -192,7 +192,7 @@ When refreshing apps, SideStore / LiveContainer usually requires StosVPN / Local
 3. In a home Wi-Fi environment, the router is already always on, controllable, and able to forward traffic.
 4. Moving this network handling logic to the router can make the iPhone experience closer to automatic availability when joining the home Wi-Fi.
 
-The goal of this project is not to replace SideStore / LiveContainer, nor to bypass authentication or signing mechanisms. It only moves the LAN packet handling that would normally happen inside the iPhone-side VPN into a controllable router environment.
+The goal of this project is not to replace SideStore / LiveContainer, nor to bypass authentication, certificate, or App ID limits. It only moves the LAN packet handling that would normally happen inside the iPhone-side VPN into a controllable router environment.
 
 ### Background
 
@@ -284,7 +284,7 @@ Different routers, OpenWrt versions, and ShellClash modes may require adjusting 
 This project does not:
 
 1. provide SideStore / LiveContainer installation service,
-2. bypass Apple ID, signing, certificate, or App ID limits,
+2. bypass Apple ID, certificate, or App ID limits,
 3. generate or replace pairing files,
 4. handle Anisette service failures,
 5. guarantee compatibility with every iOS / SideStore / LiveContainer version,
@@ -295,7 +295,7 @@ If an error belongs to Apple ID, Anisette, pairing file, or App ID limit issues,
 ### Core files
 
 ```text
-cmd/xiaomi-router-autosign/main.go
+cmd/xiaomi-router-7day-refresh/main.go
 ```
 
 User-space TUN program for reading, rewriting, and writing back IPv4 packets.
@@ -329,7 +329,7 @@ Cleanup script that stops the program and removes temporary rules.
 After successful deployment, status should look conceptually like:
 
 ```text
-/data/xiaomi-router-autosign -iface sidestore -target 10.7.0.1
+/data/xiaomi-router-7day-refresh -iface sidestore -target 10.7.0.1
 10.7.0.1 dev sidestore
 FORWARD: br-lan -> sidestore
 FORWARD: sidestore -> br-lan

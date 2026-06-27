@@ -65,7 +65,7 @@ NAT PREROUTING: br-lan + 10.7.0.1 RETURN before ShellClash rules
 2. 保持 NAT `RETURN` 规则位于 ShellClash NAT 规则之前。
 3. 启动脚本里使用 `sleep 60`，等待 ShellClash 初始化完成后再插入规则。
 4. 不建议长期使用 `-v` 运行二进制程序，详细日志可能填满 `/tmp`。
-5. 如果网络异常，优先运行 `/data/xiaomi-router-autosign-status.sh` 查看状态，再运行 `/data/xiaomi-router-autosign-cleanup.sh` 清理规则。
+5. 如果网络异常，优先运行 `/data/xiaomi-router-7day-refresh-status.sh` 查看状态，再运行 `/data/xiaomi-router-7day-refresh-cleanup.sh` 清理规则。
 
 ## English
 
@@ -132,4 +132,4 @@ NAT PREROUTING: br-lan + 10.7.0.1 RETURN before ShellClash rules
 2. Keep the NAT `RETURN` rule before ShellClash NAT rules.
 3. Use `sleep 60` in the startup script so ShellClash finishes initializing before these rules are inserted.
 4. Do not run the binary with `-v` for long-term use. Verbose logs can fill `/tmp`.
-5. If the network behaves unexpectedly, start with `/data/xiaomi-router-autosign-status.sh`, then use `/data/xiaomi-router-autosign-cleanup.sh` to clean rules if needed.
+5. If the network behaves unexpectedly, start with `/data/xiaomi-router-7day-refresh-status.sh`, then use `/data/xiaomi-router-7day-refresh-cleanup.sh` to clean rules if needed.

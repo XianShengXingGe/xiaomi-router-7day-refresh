@@ -1,4 +1,4 @@
-APP := xiaomi-router-autosign
+APP := xiaomi-router-7day-refresh
 
 .PHONY: build-arm64 build-amd64 clean
 

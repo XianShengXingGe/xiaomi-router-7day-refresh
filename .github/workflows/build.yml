@@ -26,12 +26,12 @@ jobs:
           mkdir -p dist
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
             go build -trimpath -ldflags "-s -w" \
-            -o dist/xiaomi-router-autosign-linux-arm64 \
-            ./cmd/xiaomi-router-autosign
+            -o dist/xiaomi-router-7day-refresh-linux-arm64 \
+            ./cmd/xiaomi-router-7day-refresh
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
             go build -trimpath -ldflags "-s -w" \
-            -o dist/xiaomi-router-autosign-linux-amd64 \
-            ./cmd/xiaomi-router-autosign
+            -o dist/xiaomi-router-7day-refresh-linux-amd64 \
+            ./cmd/xiaomi-router-7day-refresh
 
       - name: Package helper scripts
         run: |
@@ -47,7 +47,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: xiaomi-router-autosign
+          name: xiaomi-router-7day-refresh
           path: dist/*
 
       - name: Publish GitHub Release

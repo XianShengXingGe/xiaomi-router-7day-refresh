@@ -1,7 +1,7 @@
 #!/bin/sh
-# Human-readable status check for Xiaomi Router Auto-Sign.
+# Human-readable status check for Xiaomi Router 7-Day Refresh.
 
-APP_NAME="${APP_NAME:-xiaomi-router-autosign}"
+APP_NAME="${APP_NAME:-xiaomi-router-7day-refresh}"
 CONFIG="${CONFIG:-/data/$APP_NAME.conf}"
 
 if [ -f "$CONFIG" ]; then
@@ -18,7 +18,7 @@ LOG="${LOG:-/tmp/$APP_NAME.log}"
 ok() { echo "[OK] $*"; }
 warn() { echo "[WARN] $*"; }
 
-echo "Xiaomi Router Auto-Sign status"
+echo "Xiaomi Router 7-Day Refresh status"
 echo
 
 if ps | grep "$APP_NAME" | grep -v grep >/dev/null 2>&1; then

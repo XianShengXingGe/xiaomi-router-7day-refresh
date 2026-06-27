@@ -27,7 +27,7 @@ cat: read error: File descriptor in bad state
 优先使用友好的状态检查脚本：
 
 ```sh
-/data/xiaomi-router-autosign-status.sh
+/data/xiaomi-router-7day-refresh-status.sh
 ```
 
 关键结果应类似：
@@ -41,11 +41,11 @@ cat: read error: File descriptor in bad state
 如果需要更底层的检查，可以运行：
 
 ```sh
-ps | grep xiaomi-router-autosign
+ps | grep xiaomi-router-7day-refresh
 ip route get 10.7.0.1
 iptables -L FORWARD -n -v --line-numbers | head -12
 iptables -t nat -L PREROUTING -n -v --line-numbers | head -12
-cat /tmp/xiaomi-router-autosign.log
+cat /tmp/xiaomi-router-7day-refresh.log
 ```
 
 ### `open TUN failed: device or resource busy`
@@ -55,10 +55,7 @@ cat /tmp/xiaomi-router-autosign.log
 可以先停止旧进程并删除旧接口：
 
 ```sh
-for PID in $(ps | grep '[s]idestore-vpn-go' | awk '{print $1}'); do
-  kill -9 "$PID" 2>/dev/null
-done
-for PID in $(ps | grep '[x]iaomi-router-autosign' | awk '{print $1}'); do
+for PID in $(ps | grep '[x]iaomi-router-7day-refresh' | awk '{print $1}'); do
   kill -9 "$PID" 2>/dev/null
 done
 ip link del sidestore 2>/dev/null
@@ -67,7 +64,7 @@ ip link del sidestore 2>/dev/null
 然后重新启动：
 
 ```sh
-/data/xiaomi-router-autosign-start.sh
+/data/xiaomi-router-7day-refresh-start.sh
 ```
 
 ### iPhone IP 发生变化
@@ -75,13 +72,13 @@ ip link del sidestore 2>/dev/null
 本项目的防火墙规则会绑定到 iPhone 的固定局域网 IP。如果 iPhone IP 变化，请先在小米路由器后台的 DHCP 静态 IP 分配页面重新固定 IP，然后更新配置文件中的 `IPHONE`：
 
 ```text
-/data/xiaomi-router-autosign.conf
+/data/xiaomi-router-7day-refresh.conf
 ```
 
 修改后重启：
 
 ```sh
-/data/xiaomi-router-autosign-start.sh
+/data/xiaomi-router-7day-refresh-start.sh
 ```
 
 ### SideStore 仍提示 LocalDevVPN 或 pairing 问题
@@ -98,7 +95,7 @@ ip link del sidestore 2>/dev/null
 如果重启后 NAT `RETURN` 规则不在 ShellClash 规则之前，请确认启动脚本仍然等待 ShellClash 初始化完成后再插入规则：
 
 ```sh
-grep '^sleep 60' /data/xiaomi-router-autosign-start.sh
+grep '^sleep 60' /data/xiaomi-router-7day-refresh-start.sh
 ```
 
 ## English
@@ -128,7 +125,7 @@ This usually means the TUN device exists and can be opened by the helper.
 Start with the friendly status command:
 
 ```sh
-/data/xiaomi-router-autosign-status.sh
+/data/xiaomi-router-7day-refresh-status.sh
 ```
 
 Expected key results:
@@ -142,11 +139,11 @@ Expected key results:
 For lower-level checks, run:
 
 ```sh
-ps | grep xiaomi-router-autosign
+ps | grep xiaomi-router-7day-refresh
 ip route get 10.7.0.1
 iptables -L FORWARD -n -v --line-numbers | head -12
 iptables -t nat -L PREROUTING -n -v --line-numbers | head -12
-cat /tmp/xiaomi-router-autosign.log
+cat /tmp/xiaomi-router-7day-refresh.log
 ```
 
 ### `open TUN failed: device or resource busy`
@@ -156,10 +153,7 @@ This usually means a previous process is still holding the TUN interface.
 Stop old processes and remove the old interface:
 
 ```sh
-for PID in $(ps | grep '[s]idestore-vpn-go' | awk '{print $1}'); do
-  kill -9 "$PID" 2>/dev/null
-done
-for PID in $(ps | grep '[x]iaomi-router-autosign' | awk '{print $1}'); do
+for PID in $(ps | grep '[x]iaomi-router-7day-refresh' | awk '{print $1}'); do
   kill -9 "$PID" 2>/dev/null
 done
 ip link del sidestore 2>/dev/null
@@ -168,7 +162,7 @@ ip link del sidestore 2>/dev/null
 Then restart:
 
 ```sh
-/data/xiaomi-router-autosign-start.sh
+/data/xiaomi-router-7day-refresh-start.sh
 ```
 
 ### iPhone IP changed
@@ -176,13 +170,13 @@ Then restart:
 The firewall rules are bound to the iPhone fixed LAN IP. If the iPhone IP changes, first fix it again in the Xiaomi router's DHCP static IP assignment page, then update `IPHONE` in:
 
 ```text
-/data/xiaomi-router-autosign.conf
+/data/xiaomi-router-7day-refresh.conf
 ```
 
 After editing, restart:
 
 ```sh
-/data/xiaomi-router-autosign-start.sh
+/data/xiaomi-router-7day-refresh-start.sh
 ```
 
 ### SideStore still reports LocalDevVPN or pairing issues
@@ -199,5 +193,5 @@ Router-side packet rewriting may already be working. Check whether the status sc
 If the NAT `RETURN` rule is not before ShellClash rules after reboot, make sure the startup script still waits for ShellClash before inserting rules:
 
 ```sh
-grep '^sleep 60' /data/xiaomi-router-autosign-start.sh
+grep '^sleep 60' /data/xiaomi-router-7day-refresh-start.sh
 ```

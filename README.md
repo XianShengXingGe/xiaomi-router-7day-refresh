@@ -1,12 +1,12 @@
-# Xiaomi Router Auto-Sign for SideStore / LiveContainer
+# Xiaomi Router 7-Day Refresh for SideStore / LiveContainer
 
 ## 中文
 
 ### 项目简介
 
-这是一个面向小米路由器 / OpenWrt 环境的 SideStore / LiveContainer 自动续签辅助工具。开启路由器 SSH 后，你可以把本项目部署到路由器上，让路由器侧处理原本依赖 StosVPN / LocalDevVPN 的 `10.7.0.1` 局域网通信路径。
+这是一个面向小米路由器 / OpenWrt 环境的 SideStore / LiveContainer 7 天自动刷新辅助工具。开启路由器 SSH 后，你可以把本项目部署到路由器上，让路由器侧处理原本依赖 StosVPN / LocalDevVPN 的 `10.7.0.1` 局域网通信路径。
 
-配合 iPhone 的“快捷指令 - 自动化”，可以在 iPhone 连接指定家庭 Wi-Fi 后触发 SideStore / LiveContainer 刷新流程，从而更接近自动续签体验。
+配合 iPhone 的“快捷指令 - 自动化”，可以在 iPhone 连接指定家庭 Wi-Fi 后触发 SideStore / LiveContainer 刷新流程，帮助你在 7 天有效期内自动刷新应用。
 
 推荐使用方式：
 
@@ -49,7 +49,7 @@ ssh root@192.168.31.1
 
 ```sh
 cd /tmp
-wget https://github.com/XianShengXingGe/xiaomi-router-autosign/releases/latest/download/install.sh
+wget https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh
 sh install.sh
 ```
 
@@ -64,17 +64,17 @@ sh install.sh
 安装后会在 `/data` 下生成这些文件：
 
 ```text
-/data/xiaomi-router-autosign
-/data/xiaomi-router-autosign.conf
-/data/xiaomi-router-autosign-start.sh
-/data/xiaomi-router-autosign-status.sh
-/data/xiaomi-router-autosign-cleanup.sh
+/data/xiaomi-router-7day-refresh
+/data/xiaomi-router-7day-refresh.conf
+/data/xiaomi-router-7day-refresh-start.sh
+/data/xiaomi-router-7day-refresh-status.sh
+/data/xiaomi-router-7day-refresh-cleanup.sh
 ```
 
 #### 4. 检查状态
 
 ```sh
-/data/xiaomi-router-autosign-status.sh
+/data/xiaomi-router-7day-refresh-status.sh
 ```
 
 关键结果应类似：
@@ -121,7 +121,7 @@ Go 程序会创建一个 TUN 接口，读取发往 `10.7.0.1` 的 IPv4 包，交
 本项目不做这些事：
 
 - 不替代 SideStore 或 LiveContainer
-- 不绕过 Apple ID、签名、证书或 App ID 限制
+- 不绕过 Apple ID、证书或 App ID 限制
 - 不生成或替代 pairing file
 - 不修复 Anisette 或 Apple 服务异常
 - 不保证兼容所有 iOS、SideStore、LiveContainer 或 OpenWrt 版本
@@ -146,7 +146,7 @@ Target IP: 10.7.0.1
 ### 手动构建
 
 ```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/xiaomi-router-autosign-linux-arm64 ./cmd/xiaomi-router-autosign
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/xiaomi-router-7day-refresh-linux-arm64 ./cmd/xiaomi-router-7day-refresh
 ```
 
 或者：
@@ -160,19 +160,19 @@ make build-arm64
 启动：
 
 ```sh
-/data/xiaomi-router-autosign-start.sh
+/data/xiaomi-router-7day-refresh-start.sh
 ```
 
 停止并清理规则：
 
 ```sh
-/data/xiaomi-router-autosign-cleanup.sh
+/data/xiaomi-router-7day-refresh-cleanup.sh
 ```
 
 查看状态：
 
 ```sh
-/data/xiaomi-router-autosign-status.sh
+/data/xiaomi-router-7day-refresh-status.sh
 ```
 
 ### 排查问题
@@ -209,9 +209,9 @@ MIT
 
 ### Project Overview
 
-This is a router-side auto-sign helper for SideStore / LiveContainer on Xiaomi router / OpenWrt environments. After enabling SSH on the router, you can deploy this project to handle the `10.7.0.1` LAN communication path that is normally provided by StosVPN / LocalDevVPN.
+This is a router-side 7-day refresh helper for SideStore / LiveContainer on Xiaomi router / OpenWrt environments. After enabling SSH on the router, you can deploy this project to handle the `10.7.0.1` LAN communication path that is normally provided by StosVPN / LocalDevVPN.
 
-Combined with iOS Shortcuts automation, it can help trigger SideStore / LiveContainer refresh flows when the iPhone joins your home Wi-Fi, making the refresh experience closer to automatic signing.
+Combined with iOS Shortcuts automation, it can help trigger SideStore / LiveContainer refresh flows when the iPhone joins your home Wi-Fi, helping keep apps refreshed within the 7-day limit.
 
 The intended setup is:
 
@@ -254,7 +254,7 @@ After you are inside the router shell, run:
 
 ```sh
 cd /tmp
-wget https://github.com/XianShengXingGe/xiaomi-router-autosign/releases/latest/download/install.sh
+wget https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh
 sh install.sh
 ```
 
@@ -269,17 +269,17 @@ The installer will ask for:
 It installs files under `/data`:
 
 ```text
-/data/xiaomi-router-autosign
-/data/xiaomi-router-autosign.conf
-/data/xiaomi-router-autosign-start.sh
-/data/xiaomi-router-autosign-status.sh
-/data/xiaomi-router-autosign-cleanup.sh
+/data/xiaomi-router-7day-refresh
+/data/xiaomi-router-7day-refresh.conf
+/data/xiaomi-router-7day-refresh-start.sh
+/data/xiaomi-router-7day-refresh-status.sh
+/data/xiaomi-router-7day-refresh-cleanup.sh
 ```
 
 #### 4. Check status
 
 ```sh
-/data/xiaomi-router-autosign-status.sh
+/data/xiaomi-router-7day-refresh-status.sh
 ```
 
 Expected key results:
@@ -326,7 +326,7 @@ Experimental. Tested in one real Xiaomi/OpenWrt/ShellClash environment.
 This project does not:
 
 - replace SideStore or LiveContainer
-- bypass Apple ID, signing, certificate, or App ID limits
+- bypass Apple ID, certificate, or App ID limits
 - generate or replace pairing files
 - fix Anisette or Apple service errors
 - guarantee compatibility with every iOS, SideStore, LiveContainer, or OpenWrt version
@@ -351,7 +351,7 @@ This tool requires root access on the router and changes routing/firewall behavi
 ### Manual Build
 
 ```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/xiaomi-router-autosign-linux-arm64 ./cmd/xiaomi-router-autosign
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/xiaomi-router-7day-refresh-linux-arm64 ./cmd/xiaomi-router-7day-refresh
 ```
 
 Or:
@@ -365,19 +365,19 @@ make build-arm64
 Start:
 
 ```sh
-/data/xiaomi-router-autosign-start.sh
+/data/xiaomi-router-7day-refresh-start.sh
 ```
 
 Stop and clean rules:
 
 ```sh
-/data/xiaomi-router-autosign-cleanup.sh
+/data/xiaomi-router-7day-refresh-cleanup.sh
 ```
 
 Status:
 
 ```sh
-/data/xiaomi-router-autosign-status.sh
+/data/xiaomi-router-7day-refresh-status.sh
 ```
 
 ### Troubleshooting
