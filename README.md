@@ -141,15 +141,6 @@ Target IP: 10.7.0.1
 
 本工具需要路由器 root 权限，并会修改路由表和防火墙规则。请只在你拥有并可控的网络中使用。
 
-请不要公开上传：
-
-- Apple ID 凭据
-- SideStore / LiveContainer pairing 文件（`*.mobiledevicepairing`）
-- Clash / ShellClash 订阅配置
-- 代理节点或 token
-- 包含个人设备信息的完整终端日志
-- 路由器公网 IP 或真实设备名
-
 ### 手动构建
 
 ```bash
@@ -351,15 +342,6 @@ Target IP: 10.7.0.1
 ### Security Notes
 
 This tool requires root access on the router and changes routing/firewall behavior. Use it only on networks you control.
-
-Do not publish or upload:
-
-- Apple ID credentials
-- SideStore / LiveContainer pairing files (`*.mobiledevicepairing`)
-- Clash/ShellClash subscription config
-- proxy nodes or tokens
-- full terminal logs containing personal device information
-- public router IPs or real device names
 
 ### Manual Build
 
