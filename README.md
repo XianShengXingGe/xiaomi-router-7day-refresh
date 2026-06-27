@@ -1,5 +1,11 @@
 # Xiaomi Router Auto-Sign for SideStore / LiveContainer
 
+## 项目简介 / Project Overview
+
+**中文：** 这是一个面向小米路由器 / OpenWrt 环境的 SideStore / LiveContainer 自动续签辅助工具。开启路由器 SSH 后，你可以把本项目部署到路由器上，让路由器侧处理原本依赖 StosVPN / LocalDevVPN 的 `10.7.0.1` 局域网通信路径。配合 iPhone 的“快捷指令 - 自动化”，可以在 iPhone 连接指定家庭 Wi-Fi 后触发 SideStore / LiveContainer 刷新流程，从而更接近自动续签体验。
+
+**English:** This is a router-side auto-sign helper for SideStore / LiveContainer on Xiaomi router / OpenWrt environments. After enabling SSH on the router, you can deploy this project to handle the `10.7.0.1` LAN communication path that is normally provided by StosVPN / LocalDevVPN. Combined with iOS Shortcuts automation, it can help trigger SideStore / LiveContainer refresh flows when the iPhone joins your home Wi-Fi.
+
 Run a lightweight router-side helper on a Xiaomi/OpenWrt router so SideStore or LiveContainer can refresh apps automatically when an iPhone joins your home Wi-Fi.
 
 The intended setup is:
@@ -180,6 +186,14 @@ Status:
 
 See [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
+## Official Links
+
+- [Termius](https://termius.com/) - SSH client for connecting to the router from Windows, macOS, Linux, iOS, or Android.
+- [SideStore](https://sidestore.io/) - official SideStore website.
+- [SideStore Docs](https://docs.sidestore.io/) - official SideStore documentation.
+- [LiveContainer](https://github.com/LiveContainer/LiveContainer) - official LiveContainer GitHub repository.
+- [LiveContainer Releases](https://github.com/LiveContainer/LiveContainer/releases) - LiveContainer release downloads.
+
 ## Credits
 
 Inspired by:
@@ -187,7 +201,7 @@ Inspired by:
 - SideStore / LocalDevVPN behavior
 - StosVPN
 - xddxdd/sidestore-vpn
-- Lantian's write-up on using SideStore without StosVPN across LAN
+- [Lan Tian's write-up on using SideStore without StosVPN across LAN](https://lantian.pub/article/modify-computer/sidestore-without-stosvpn-across-lan.lantian/)
 
 This project is not affiliated with SideStore, LiveContainer, StosVPN, xddxdd, or Lantian.
 
