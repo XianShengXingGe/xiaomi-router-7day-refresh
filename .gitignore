@@ -1,0 +1,15 @@
+# Build outputs
+bin/
+dist/
+dist/*.tmp
+*.exe
+*.test
+
+# Sensitive local files
+*.mobiledevicepairing
+*.plist
+*.p12
+*.mobileprovision
+config.yaml
+*.log
+.env
