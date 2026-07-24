@@ -45,13 +45,19 @@ ssh root@192.168.31.1
 
 #### 3. 在路由器上运行安装脚本
 
-进入路由器 shell 后运行：
+进入路由器 shell 后运行。某些旧版 BusyBox `wget` 不支持 HTTPS，因此项目优先使用路由器上已有的 `curl`：
 
 ```sh
 cd /tmp
-wget https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh
+rm -f install.sh
+
+curl -fLk -o install.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+
 sh install.sh
 ```
+
+如果 `curl` 返回 `404`，请检查仓库是否已发布正式 GitHub Release。Draft 和 prerelease 不会作为普通用户的 `latest` 安装来源；正式 Release 的 Assets 中也必须包含名为 `install.sh` 的文件。
 
 安装脚本会交互式询问：
 
@@ -250,13 +256,19 @@ Your router address may be different. Use the actual LAN IP of your router.
 
 #### 3. Run the installer on the router
 
-After you are inside the router shell, run:
+After you are inside the router shell, run the following. Some older BusyBox `wget` builds do not support HTTPS, so this project prefers the router's available `curl`:
 
 ```sh
 cd /tmp
-wget https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh
+rm -f install.sh
+
+curl -fLk -o install.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+
 sh install.sh
 ```
+
+If `curl` returns `404`, verify that the repository has a published GitHub Release. Drafts and prereleases are not normal `latest` installation sources, and the published Release Assets must include a file named `install.sh`.
 
 The installer will ask for:
 

@@ -21,6 +21,14 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Test and validate shell scripts
+        run: |
+          go test ./...
+          sh -n scripts/install.sh
+          sh -n scripts/start.sh
+          sh -n scripts/status.sh
+          sh -n scripts/cleanup.sh
+
       - name: Build
         run: |
           mkdir -p dist
@@ -39,11 +47,28 @@ jobs:
           cp scripts/start.sh dist/start.sh
           cp scripts/status.sh dist/status.sh
           cp scripts/cleanup.sh dist/cleanup.sh
+          chmod +x dist/*.sh
+
+      - name: Verify release assets
+        run: |
+          test -s dist/install.sh
+          test -s dist/start.sh
+          test -s dist/status.sh
+          test -s dist/cleanup.sh
+          test -s dist/xiaomi-router-7day-refresh-linux-arm64
+          test -s dist/xiaomi-router-7day-refresh-linux-amd64
 
       - name: Checksums
         run: |
           cd dist
-          sha256sum * > SHA256SUMS.txt
+          sha256sum \
+            install.sh \
+            start.sh \
+            status.sh \
+            cleanup.sh \
+            xiaomi-router-7day-refresh-linux-arm64 \
+            xiaomi-router-7day-refresh-linux-amd64 > SHA256SUMS.txt
+          test -s SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         with:
@@ -51,7 +76,15 @@ jobs:
           path: dist/*
 
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
+          files: |
+            dist/install.sh
+            dist/start.sh
+            dist/status.sh
+            dist/cleanup.sh
+            dist/xiaomi-router-7day-refresh-linux-arm64
+            dist/xiaomi-router-7day-refresh-linux-amd64
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
