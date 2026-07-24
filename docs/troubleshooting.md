@@ -48,6 +48,32 @@ iptables -t nat -L PREROUTING -n -v --line-numbers | head -12
 cat /tmp/xiaomi-router-7day-refresh.log
 ```
 
+### `wget: not an http or ftp url`
+
+部分旧版 BusyBox `wget` 不支持 HTTPS，因此会拒绝 GitHub 的 `https://` 下载地址。请使用项目文档中的 `curl` 安装命令，而不是直接使用 `wget`：
+
+```sh
+cd /tmp
+rm -f install.sh
+curl -fLk -o install.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+sh install.sh
+```
+
+安装器后续下载二进制和辅助脚本时也会优先使用 `curl`。
+
+### `curl: (22) The requested URL returned error: 404`
+
+这表示 GitHub 没有在该下载地址提供对应文件。请依次检查：
+
+1. 仓库是否已经发布正式 GitHub Release。
+2. Release 是否仍是 Draft，或是否只有 prerelease。
+3. 正式 Release Assets 中是否存在 `install.sh`。
+4. Asset 文件名是否与下载地址中的 `install.sh` 完全一致。
+5. GitHub Actions 的发布任务是否失败。
+
+`releases/latest/download/...` 仅指向最新的正式 Release；Draft 和 prerelease 不应作为普通用户的安装来源。
+
 ### `open TUN failed: device or resource busy`
 
 这通常表示之前的进程还占用着 TUN 接口。
@@ -145,6 +171,32 @@ iptables -L FORWARD -n -v --line-numbers | head -12
 iptables -t nat -L PREROUTING -n -v --line-numbers | head -12
 cat /tmp/xiaomi-router-7day-refresh.log
 ```
+
+### `wget: not an http or ftp url`
+
+Some older BusyBox `wget` builds do not support HTTPS, so they reject GitHub `https://` download URLs. Use the documented `curl` installation command instead of invoking `wget` directly:
+
+```sh
+cd /tmp
+rm -f install.sh
+curl -fLk -o install.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+sh install.sh
+```
+
+The installer also prefers `curl` for its later binary and helper-script downloads.
+
+### `curl: (22) The requested URL returned error: 404`
+
+This means GitHub does not provide a file at that download URL. Check the following:
+
+1. A published GitHub Release exists.
+2. The Release is not still a Draft and the repository does not have only prereleases.
+3. The published Release Assets include `install.sh`.
+4. The asset name exactly matches `install.sh` in the download URL.
+5. The GitHub Actions publishing job succeeded.
+
+`releases/latest/download/...` resolves only to the newest published, non-prerelease Release; Drafts and prereleases are not normal user installation sources.
 
 ### `open TUN failed: device or resource busy`
 

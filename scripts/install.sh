@@ -86,13 +86,19 @@ detect_arch() {
 download() {
   url="$1"
   out="$2"
-  if command -v wget >/dev/null 2>&1; then
+  rm -f "$out"
+
+  # Some older BusyBox wget builds do not support HTTPS. Prefer the curl
+  # available on the target OpenWrt firmware, while keeping wget as fallback.
+  if command -v curl >/dev/null 2>&1; then
+    curl -fLk -o "$out" "$url" || return 1
+  elif command -v wget >/dev/null 2>&1; then
     wget -O "$out" "$url" || return 1
-  elif command -v curl >/dev/null 2>&1; then
-    curl -L -o "$out" "$url" || return 1
   else
-    die "Neither wget nor curl is available on this router."
+    die "Neither curl nor wget is available on this router."
   fi
+
+  [ -s "$out" ] || return 1
 }
 
 require_router_shell() {
