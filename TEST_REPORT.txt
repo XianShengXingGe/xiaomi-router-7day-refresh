@@ -1,0 +1,26 @@
+Xiaomi Router 7-Day Refresh 0.5.1-public
+
+Automated validation:
+- Go unit tests for IPv4 reflector rewrite/checksum.
+- Go unit tests for DHCP Option 121 insertion using 10.7.0.1/32.
+- Go unit tests for preserving pre-existing Option 121 routes.
+- go vet.
+- POSIX shell syntax checks for all runtime scripts.
+- Static Linux ARM64 and AMD64 builds.
+- Release SHA256 generation.
+
+Real-router validation performed during development:
+- Xiaomi/OpenWrt-like aarch64 router.
+- /dev/net/tun available.
+- bridge-nf-call-iptables available.
+- iptables physdev/string/u32 matches available.
+- iPhone DHCP Request explicitly requested Classless-Static-Route (Option 121).
+- Wireless-repeater DHCP injector learned the phone-facing Wi-Fi bridge member.
+- Patched DHCP ACK injection was verified.
+- The earlier 198.19.0.2 experiment proved the /32 route could move SideStore traffic onto the router path.
+- Final target was changed to SideStore Override Peer 10.7.0.1.
+- With the service restarted using TARGET=10.7.0.1 and a renewed iPhone Wi-Fi DHCP lease, SideStore Refresh completed successfully end-to-end in wireless-repeater mode.
+
+Mode 1 (main-router) uses the same reflector and RFC 3442 host-route model through dnsmasq, but was not separately hardware-validated in this development session.
+
+Installation-specific interface names, LAN addresses and iPhone MAC addresses are not hard-coded in the release.

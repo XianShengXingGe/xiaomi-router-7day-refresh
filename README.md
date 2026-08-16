@@ -1,73 +1,162 @@
 # Xiaomi Router 7-Day Refresh for SideStore / LiveContainer
 
-## 中文
+Router-side helper for SideStore / LiveContainer refresh workflows on Xiaomi/OpenWrt routers.
 
-### 项目简介
+## v0.5.1 public release
 
-这是一个面向小米路由器 / OpenWrt 环境的 SideStore / LiveContainer 7 天自动刷新辅助工具。开启路由器 SSH 后，你可以把本项目部署到路由器上，让路由器侧处理原本依赖 StosVPN / LocalDevVPN 的 `10.7.0.1` 局域网通信路径。
+The validated SideStore endpoint is now the **Override Peer IP `10.7.0.1`**.
 
-配合 iPhone 的“快捷指令 - 自动化”，可以在 iPhone 连接指定家庭 Wi-Fi 后触发 SideStore / LiveContainer 刷新流程，帮助你在 7 天有效期内自动刷新应用。
+The previous v0.4 experiment routed the auto-discovered Local VPN peer (`198.19.0.2`). That proved DHCP Option 121 and the router reflector worked, but SideStore could still keep its internal Device Endpoint uninitialized when an explicit override was configured.
 
-推荐使用方式：
+v0.5.x follows SideStore's override path instead:
 
-1. 在小米路由器上开启 SSH。
-2. 从 Windows、macOS 或 Linux 电脑 SSH 登录到路由器。
-3. 在路由器 shell 里运行交互式安装脚本。
-4. 让 iPhone 使用固定局域网 IP。
-5. 使用 iOS 快捷指令自动化，在连接此 Wi-Fi 后触发 SideStore / LiveContainer 刷新。
-
-本项目已在一台基于 OpenWrt 18.06 固件、安装 ShellClash 的小米路由器上验证。其他 OpenWrt 路由器如果提供 `/dev/net/tun`、`ip` 和 `iptables`，也可以自行尝试。
-
-### 快速开始
-
-#### 1. 准备 iPhone 和路由器
-
-安装前，请先让 iPhone 的局域网 IP 保持稳定：
-
-1. 在 iPhone 当前连接的 Wi-Fi 设置里，将 **私有无线局域网地址** 设置为 **固定** 或 **关闭**。
-2. 在小米路由器后台开启并使用 **DHCP 静态 IP 分配**，把这台 iPhone 绑定到固定局域网 IP。
-
-请记下这个固定 IP，例如 `192.168.31.100`。
-
-#### 2. SSH 登录到路由器
-
-如果你的小米路由器还没有开启 SSH，可以参考 Juewuy 的教程：[小米路由设备破解固化永久SSH教程](https://jwsc.eu.org/gDyfIPSsZ/)。不同型号和固件的操作方式可能不同，操作前请先确认教程适用于你的设备，并自行评估刷写、解锁或固化 SSH 的风险。
-
-在电脑上打开 Terminal、Windows Terminal 或 PowerShell，然后 SSH 登录到路由器。
-
-下面的地址只是示例：
-
-```sh
-ssh root@192.168.31.1
+```text
+SideStore
+   |
+   | Override Peer = 10.7.0.1
+   v
+router-side host route / reflector
+   |
+   v
+iPhone local device service
 ```
 
-你的路由器地址不一定是 `192.168.31.1`，请使用你自己路由器的实际局域网 IP。
+This path has been validated end-to-end on a wireless-repeater topology. No device-specific MAC address, LAN address, or router identifier is embedded in the public source.
 
-#### 3. 在路由器上运行安装脚本
+## Supported topologies
 
-进入路由器 shell 后运行。某些旧版 BusyBox `wget` 不支持 HTTPS，因此项目优先使用路由器上已有的 `curl`：
+### Mode 1 — Main router
+
+Use this when the iPhone connects directly to the router and this router is also the DHCP server/default gateway.
+
+```text
+iPhone
+  |
+  v
+Xiaomi/OpenWrt main router
+  |
+  v
+Internet
+```
+
+The project installs a MAC-targeted dnsmasq DHCP Option 121 entry for the selected iPhone:
+
+```text
+10.7.0.1/32 -> this router LAN IP
+0.0.0.0/0   -> this router LAN IP
+```
+
+The router then routes `10.7.0.1/32` into the project TUN reflector.
+
+### Mode 2 — Wireless repeater / child router
+
+Use this when the iPhone connects to a child/repeater router, while DHCP/default gateway are provided by an upstream router.
+
+```text
+iPhone
+  |
+  v
+Xiaomi child router / wireless repeater
+  |
+  v
+upstream main router (actual DHCP/default gateway)
+```
+
+Because the child router is not the DHCP server, editing its dnsmasq configuration cannot change the iPhone lease. The project therefore:
+
+1. Watches bridged DHCP traffic with an AF_PACKET raw socket.
+2. Learns the actual phone-facing Wi-Fi bridge member from the iPhone DHCP Request.
+3. Observes the upstream DHCP ACK.
+4. Patches only the ACK for the configured iPhone Wi-Fi MAC.
+5. Adds Option 121:
+   - `10.7.0.1/32 -> child router LAN IP`
+   - `0.0.0.0/0 -> upstream default gateway`
+6. Sends the patched ACK directly back to the learned phone-facing interface.
+7. Drops only the original unpatched ACK for that iPhone; OFFER/NAK packets are not blocked.
+8. Routes `10.7.0.1/32` into the same TUN reflector as Mode 1.
+
+If the upstream ACK already contains Option 121, the injector prepends the SideStore `/32` route and preserves the existing Option 121 payload.
+
+## Reflector behavior
+
+Both modes use the same narrow reflector:
+
+```text
+phone-ip:client-port -> 10.7.0.1:device-port
+                 |
+                 v
+             sidestore TUN
+                 |
+       swap IPv4 src/dst only
+       recalculate IPv4/TCP/UDP checksums
+                 |
+                 v
+10.7.0.1:client-port -> phone-ip:device-port
+```
+
+TCP/UDP ports are intentionally not swapped. This matches the loopback-reflection behavior required by the device-side service.
+
+## SideStore expectation
+
+This release is designed for SideStore Local VPN / Remote Pairing where Connection Configuration shows:
+
+```text
+Override Peer IP: 10.7.0.1
+```
+
+The router can make that address reachable, but it cannot change SideStore's internal configuration. If a SideStore build uses a different/empty override address, update/configure SideStore accordingly before expecting this router target to become active.
+
+## Requirements
+
+Common:
+
+- root/SSH access on the router
+- Linux/OpenWrt-like system
+- `/dev/net/tun`
+- `ip`
+- `iptables`
+- ARM64 or AMD64
+
+Mode 1 additionally requires:
+
+- dnsmasq as LAN DHCP server
+- active dnsmasq `conf-dir`
+
+Mode 2 additionally requires:
+
+- bridge netfilter (`/proc/sys/net/bridge/bridge-nf-call-iptables`)
+- `iptables` `physdev` match
+- `iptables` `string` match
+- AF_PACKET raw sockets (`CONFIG_PACKET`)
+
+## Installation
+
+Upload/extract the release bundle on the router, then:
 
 ```sh
-cd /tmp
-rm -f install.sh
-
-curl -fLk -o install.sh \
-  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
-
+cd /tmp/xiaomi-router-7day-refresh-release
 sh install.sh
 ```
 
-如果 `curl` 返回 `404`，请检查仓库是否已发布正式 GitHub Release。Draft 和 prerelease 不会作为普通用户的 `latest` 安装来源；正式 Release 的 Assets 中也必须包含名为 `install.sh` 的文件。
+The installer asks for:
 
-安装脚本会交互式询问：
+- topology: Main router or Wireless repeater / child router
+- LAN/bridge interface, usually `br-lan`
+- this router LAN IPv4
+- iPhone Wi-Fi MAC / Private Wi-Fi Address for this SSID
+- TUN interface name, usually `sidestore`
+- Mode 1: active dnsmasq `conf-dir`
+- Mode 2: upstream/default gateway IPv4
 
-- iPhone 的固定局域网 IP
-- LAN 接口名，通常是 `br-lan`
-- TUN 接口名，通常是 `sidestore`
-- 是否设置路由器开机自启动
-- 是否立即启动服务
+The target is fixed to:
 
-安装后会在 `/data` 下生成这些文件：
+```text
+10.7.0.1
+```
+
+After first installation or after changing topology, toggle the iPhone Wi-Fi OFF/ON once so a fresh DHCP ACK can install the `/32` route.
+
+## Installed files
 
 ```text
 /data/xiaomi-router-7day-refresh
@@ -75,316 +164,18 @@ sh install.sh
 /data/xiaomi-router-7day-refresh-start.sh
 /data/xiaomi-router-7day-refresh-status.sh
 /data/xiaomi-router-7day-refresh-cleanup.sh
+/data/xiaomi-router-7day-refresh-diagnose.sh
 ```
 
-#### 4. 检查状态
+## Commands
+
+Manual start with a short delay:
 
 ```sh
-/data/xiaomi-router-7day-refresh-status.sh
+START_DELAY=2 /data/xiaomi-router-7day-refresh-start.sh
 ```
 
-关键结果应类似：
-
-```text
-[OK] helper process is running
-[OK] TUN interface sidestore exists
-[OK] TUN interface sidestore is up
-[OK] route to 10.7.0.1 uses sidestore
-```
-
-#### 5. 添加 iOS 快捷指令自动化
-
-路由器侧设置正常后，在 iPhone 上创建快捷指令自动化：
-
-1. 触发条件：当 iPhone 连接到你的家庭 Wi-Fi。
-2. 动作：打开 SideStore 或 LiveContainer。
-3. 可选动作：运行你当前用于刷新 SideStore / LiveContainer 的快捷指令或 URL Scheme。
-
-本项目只负责路由器侧网络路径。实际刷新仍然依赖 SideStore / LiveContainer、有效的 pairing file、本地网络权限，以及正常的 Apple ID / Anisette 状态。
-
-### 工作原理
-
-SideStore / LiveContainer 的刷新流程通常需要手机端 StosVPN / LocalDevVPN 处理与 `10.7.0.1` 相关的通信。
-
-本项目把这部分包处理逻辑移动到路由器上：
-
-```text
-<IPHONE_IP> -> 10.7.0.1
-```
-
-改写为：
-
-```text
-10.7.0.1 -> <IPHONE_IP>
-```
-
-Go 程序会创建一个 TUN 接口，读取发往 `10.7.0.1` 的 IPv4 包，交换源 IP 和目标 IP，重新计算 IPv4 / TCP / UDP 校验和，然后把包写回 TUN。
-
-### 项目状态
-
-实验性项目。已在一个真实的小米 / OpenWrt / ShellClash 环境中验证。
-
-本项目不做这些事：
-
-- 不替代 SideStore 或 LiveContainer
-- 不绕过 Apple ID、证书或 App ID 限制
-- 不生成或替代 pairing file
-- 不修复 Anisette 或 Apple 服务异常
-- 不保证兼容所有 iOS、SideStore、LiveContainer 或 OpenWrt 版本
-
-### 已验证环境
-
-```text
-Router: Xiaomi router / OpenWrt 18.06 based firmware
-Kernel: Linux 4.4.x
-Arch: aarch64
-LAN interface: br-lan
-TUN: /dev/net/tun available
-Firewall: iptables
-ShellClash: installed
-Target IP: 10.7.0.1
-```
-
-### 安全说明
-
-本工具需要路由器 root 权限，并会修改路由表和防火墙规则。请只在你拥有并可控的网络中使用。
-
-### 手动构建
-
-```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/xiaomi-router-7day-refresh-linux-arm64 ./cmd/xiaomi-router-7day-refresh
-```
-
-或者：
-
-```bash
-make build-arm64
-```
-
-### 手动命令
-
-启动：
-
-```sh
-/data/xiaomi-router-7day-refresh-start.sh
-```
-
-停止并清理规则：
-
-```sh
-/data/xiaomi-router-7day-refresh-cleanup.sh
-```
-
-查看状态：
-
-```sh
-/data/xiaomi-router-7day-refresh-status.sh
-```
-
-### 排查问题
-
-见 [docs/troubleshooting.md](docs/troubleshooting.md)。
-
-### 相关下载与官网
-
-- [Termius](https://termius.com/)：可用于从 Windows、macOS、Linux、iOS 或 Android 通过 SSH 登录路由器。
-- [SideStore](https://sidestore.io/)：SideStore 官网。
-- [SideStore Docs](https://docs.sidestore.io/)：SideStore 官方文档。
-- [LiveContainer](https://github.com/LiveContainer/LiveContainer)：LiveContainer 官方 GitHub 仓库。
-- [LiveContainer Releases](https://github.com/LiveContainer/LiveContainer/releases)：LiveContainer 发布下载页。
-
-### 鸣谢
-
-本项目受到以下项目和文章启发：
-
-- SideStore / LocalDevVPN 行为
-- StosVPN
-- xddxdd/sidestore-vpn
-- [Juewuy 的小米路由设备破解固化永久 SSH 教程](https://jwsc.eu.org/gDyfIPSsZ/)
-- [蓝天关于跨局域网使用 SideStore 且不依赖 StosVPN 的文章](https://lantian.pub/article/modify-computer/sidestore-without-stosvpn-across-lan.lantian/)
-
-本项目与 SideStore、LiveContainer、StosVPN、xddxdd、Juewuy 或蓝天没有从属关系。
-
-### 许可证
-
-MIT
-
----
-
-## English
-
-### Project Overview
-
-This is a router-side 7-day refresh helper for SideStore / LiveContainer on Xiaomi router / OpenWrt environments. After enabling SSH on the router, you can deploy this project to handle the `10.7.0.1` LAN communication path that is normally provided by StosVPN / LocalDevVPN.
-
-Combined with iOS Shortcuts automation, it can help trigger SideStore / LiveContainer refresh flows when the iPhone joins your home Wi-Fi, helping keep apps refreshed within the 7-day limit.
-
-The intended setup is:
-
-1. Enable SSH on the Xiaomi router.
-2. SSH into the router from Windows, macOS, or Linux.
-3. Run the interactive installer inside the router shell.
-4. Keep the iPhone on a fixed LAN IP.
-5. Use iOS Shortcuts automation to trigger SideStore / LiveContainer refresh after connecting to this Wi-Fi.
-
-This project was tested on a Xiaomi router with OpenWrt 18.06 based firmware and ShellClash installed. Other OpenWrt routers may work if they provide `/dev/net/tun`, `ip`, and `iptables`.
-
-### Quick Start
-
-#### 1. Prepare the iPhone and router
-
-Before installing, make the iPhone LAN IP stable:
-
-1. On the iPhone, open the current Wi-Fi network settings and set **Private Wi-Fi Address** to **Fixed** or **Off**.
-2. In the Xiaomi router admin page, enable and use **DHCP static IP assignment** to bind this iPhone to a fixed LAN IP.
-
-Write down that fixed iPhone IP, for example `192.168.31.100`.
-
-#### 2. SSH into the router
-
-If SSH is not enabled on your Xiaomi router yet, you can refer to Juewuy's guide: [Xiaomi router permanent SSH tutorial](https://jwsc.eu.org/gDyfIPSsZ/). Steps may differ across router models and firmware versions. Make sure the guide applies to your device and evaluate the risks of unlocking, flashing, or making SSH persistent before proceeding.
-
-Open Terminal, Windows Terminal, or PowerShell on your computer, then SSH into the router.
-
-This address is only an example:
-
-```sh
-ssh root@192.168.31.1
-```
-
-Your router address may be different. Use the actual LAN IP of your router.
-
-#### 3. Run the installer on the router
-
-After you are inside the router shell, run the following. Some older BusyBox `wget` builds do not support HTTPS, so this project prefers the router's available `curl`:
-
-```sh
-cd /tmp
-rm -f install.sh
-
-curl -fLk -o install.sh \
-  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
-
-sh install.sh
-```
-
-If `curl` returns `404`, verify that the repository has a published GitHub Release. Drafts and prereleases are not normal `latest` installation sources, and the published Release Assets must include a file named `install.sh`.
-
-The installer will ask for:
-
-- the iPhone fixed LAN IP
-- the LAN interface name, usually `br-lan`
-- the TUN interface name, usually `sidestore`
-- whether to enable auto start on router boot
-- whether to start the helper immediately
-
-It installs files under `/data`:
-
-```text
-/data/xiaomi-router-7day-refresh
-/data/xiaomi-router-7day-refresh.conf
-/data/xiaomi-router-7day-refresh-start.sh
-/data/xiaomi-router-7day-refresh-status.sh
-/data/xiaomi-router-7day-refresh-cleanup.sh
-```
-
-#### 4. Check status
-
-```sh
-/data/xiaomi-router-7day-refresh-status.sh
-```
-
-Expected key results:
-
-```text
-[OK] helper process is running
-[OK] TUN interface sidestore exists
-[OK] TUN interface sidestore is up
-[OK] route to 10.7.0.1 uses sidestore
-```
-
-#### 5. Add iOS Shortcuts automation
-
-After router-side setup is working, create an iOS Shortcuts automation:
-
-1. Trigger: when the iPhone joins your home Wi-Fi.
-2. Action: open SideStore or LiveContainer.
-3. Optional action: run the refresh shortcut or URL scheme you already use for your setup.
-
-The router helper only handles the network path. The actual refresh still depends on SideStore / LiveContainer, a valid pairing file, local network permission, and a healthy Apple ID / Anisette state.
-
-### What It Does
-
-SideStore / LiveContainer refresh flows normally depend on the phone-side StosVPN / LocalDevVPN path for traffic involving `10.7.0.1`.
-
-This helper moves that small packet-handling job to the router:
-
-```text
-<IPHONE_IP> -> 10.7.0.1
-```
-
-becomes:
-
-```text
-10.7.0.1 -> <IPHONE_IP>
-```
-
-The Go program opens a TUN interface, reads IPv4 packets sent to `10.7.0.1`, swaps the source and destination IP addresses, recalculates IPv4/TCP/UDP checksums, and writes the packet back.
-
-### Status
-
-Experimental. Tested in one real Xiaomi/OpenWrt/ShellClash environment.
-
-This project does not:
-
-- replace SideStore or LiveContainer
-- bypass Apple ID, certificate, or App ID limits
-- generate or replace pairing files
-- fix Anisette or Apple service errors
-- guarantee compatibility with every iOS, SideStore, LiveContainer, or OpenWrt version
-
-### Tested Environment
-
-```text
-Router: Xiaomi router / OpenWrt 18.06 based firmware
-Kernel: Linux 4.4.x
-Arch: aarch64
-LAN interface: br-lan
-TUN: /dev/net/tun available
-Firewall: iptables
-ShellClash: installed
-Target IP: 10.7.0.1
-```
-
-### Security Notes
-
-This tool requires root access on the router and changes routing/firewall behavior. Use it only on networks you control.
-
-### Manual Build
-
-```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o dist/xiaomi-router-7day-refresh-linux-arm64 ./cmd/xiaomi-router-7day-refresh
-```
-
-Or:
-
-```bash
-make build-arm64
-```
-
-### Manual Commands
-
-Start:
-
-```sh
-/data/xiaomi-router-7day-refresh-start.sh
-```
-
-Stop and clean rules:
-
-```sh
-/data/xiaomi-router-7day-refresh-cleanup.sh
-```
+`START_DELAY=2` only shortens the startup wait. The important v0.5 behavior is that the loaded config uses `TARGET="10.7.0.1"`.
 
 Status:
 
@@ -392,30 +183,84 @@ Status:
 /data/xiaomi-router-7day-refresh-status.sh
 ```
 
-### Troubleshooting
+Diagnostics:
 
-See [docs/troubleshooting.md](docs/troubleshooting.md).
+```sh
+/data/xiaomi-router-7day-refresh-diagnose.sh status
+/data/xiaomi-router-7day-refresh-diagnose.sh watch-dhcp
+/data/xiaomi-router-7day-refresh-diagnose.sh watch-target
+```
 
-### Official Links
+Stop and clean:
 
-- [Termius](https://termius.com/) - SSH client for connecting to the router from Windows, macOS, Linux, iOS, or Android.
-- [SideStore](https://sidestore.io/) - official SideStore website.
-- [SideStore Docs](https://docs.sidestore.io/) - official SideStore documentation.
-- [LiveContainer](https://github.com/LiveContainer/LiveContainer) - official LiveContainer GitHub repository.
-- [LiveContainer Releases](https://github.com/LiveContainer/LiveContainer/releases) - LiveContainer release downloads.
+```sh
+/data/xiaomi-router-7day-refresh-cleanup.sh
+```
 
-### Credits
+## Expected success indicators
 
-Inspired by:
+Mode 1:
 
-- SideStore / LocalDevVPN behavior
-- StosVPN
-- xddxdd/sidestore-vpn
-- [Juewuy's Xiaomi router permanent SSH tutorial](https://jwsc.eu.org/gDyfIPSsZ/)
-- [Lan Tian's write-up on using SideStore without StosVPN across LAN](https://lantian.pub/article/modify-computer/sidestore-without-stosvpn-across-lan.lantian/)
+```text
+[OK] targeted DHCP Option121 snippet exists
+[OK] reflector process is running
+[OK] router route 10.7.0.1/32 uses sidestore
+```
 
-This project is not affiliated with SideStore, LiveContainer, StosVPN, xddxdd, Juewuy, or Lantian.
+Mode 2:
 
-### License
+```text
+learned iPhone ingress interface: wl...
+INJECTED DHCP ACK ... Option121 10.7.0.1/32 via <child-router-ip> + default via <upstream-gateway>
+```
+
+After SideStore Refresh:
+
+```text
+reflector rewrote packet #...
+```
+
+In SideStore Health Check, the desired state is that `Override Peer IP` is `10.7.0.1` and becomes reachable/active.
+
+## Upgrade from v0.4
+
+v0.4 used `198.19.0.2`. v0.5 migrates to SideStore's explicit override endpoint `10.7.0.1`.
+
+Run:
+
+```sh
+sh upgrade.sh
+```
+
+The installer cleans the previous runtime, writes the new target, and asks for the current topology. The v0.5 cleanup/start scripts also remove legacy `198.19.0.2` route/bypass state when present.
+
+## Safety / rollback
+
+The cleanup script removes only project-owned runtime state:
+
+- project TUN route/interface
+- DHCP ACK interception rules
+- DHCP injector/reflector processes
+- project-owned dnsmasq snippet
+- project-owned reflector/NAT/mangle exceptions
+- legacy v0.4 `198.19.0.2` route/bypass state
+
+It does not change Apple account/certificate limits, create pairing files, or modify the upstream main router in repeater mode.
+
+## Build
+
+```sh
+make test
+make vet
+make build
+```
+
+Release bundle:
+
+```sh
+make release
+```
+
+## License
 
 MIT

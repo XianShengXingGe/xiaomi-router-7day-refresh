@@ -1,0 +1,49 @@
+Xiaomi Router 7-Day Refresh 0.5.0 双拓扑正式版
+
+核心目标：SideStore Override Peer = 10.7.0.1
+
+方式 1：直接连接主路由器
+- iPhone 连接的这台路由器就是 DHCP Server 和默认网关。
+- 项目通过 dnsmasq 只给指定 iPhone MAC 下发 DHCP Option 121。
+- 下发：10.7.0.1/32 -> 当前主路由器 LAN IP。
+- 保留：0.0.0.0/0 -> 当前主路由器 LAN IP。
+
+方式 2：连接无线中继/子路由器
+- iPhone 连接子路由器，但 DHCP 和默认网关来自上级主路由器。
+- 子路由器监听经过桥接的 DHCP Request/ACK。
+- 自动学习手机实际接入的 Wi-Fi bridge member。
+- 只替换发给指定 iPhone MAC 的 DHCP ACK。
+- 注入：10.7.0.1/32 -> 子路由器 LAN IP。
+- 保留：0.0.0.0/0 -> 上级默认网关。
+- 原始 DHCP OFFER/NAK 不拦截。
+
+两种方式最终使用同一个 TUN reflector：
+10.7.0.1/32 -> sidestore TUN -> 交换 IPv4 源/目的地址 -> 重算 checksum -> 返回 iPhone。
+
+安装：
+  cd /tmp/xiaomi-router-7day-refresh-release
+  sh install.sh
+
+首次安装完成后：
+  1. iPhone 关闭 Wi-Fi。
+  2. 等 2~3 秒。
+  3. 重新打开 Wi-Fi。
+  4. 等待 DHCP 完成。
+  5. 再执行 SideStore Refresh。
+
+手动启动：
+  START_DELAY=2 /data/xiaomi-router-7day-refresh-start.sh
+
+说明：START_DELAY=2 只是把启动等待缩短为 2 秒；真正关键的是配置中的 TARGET=10.7.0.1。
+
+状态：
+  /data/xiaomi-router-7day-refresh-status.sh
+
+抓 DHCP：
+  /data/xiaomi-router-7day-refresh-diagnose.sh watch-dhcp
+
+抓 SideStore Override Peer：
+  /data/xiaomi-router-7day-refresh-diagnose.sh watch-target
+
+停止并清理：
+  /data/xiaomi-router-7day-refresh-cleanup.sh
