@@ -16,59 +16,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Test and validate shell scripts
+      - name: Test and validate
         run: |
-          go test ./...
-          sh -n scripts/install.sh
-          sh -n scripts/start.sh
-          sh -n scripts/status.sh
-          sh -n scripts/cleanup.sh
+          make test
+          make vet
 
-      - name: Build
-        run: |
-          mkdir -p dist
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
-            go build -trimpath -ldflags "-s -w" \
-            -o dist/xiaomi-router-7day-refresh-linux-arm64 \
-            ./cmd/xiaomi-router-7day-refresh
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-            go build -trimpath -ldflags "-s -w" \
-            -o dist/xiaomi-router-7day-refresh-linux-amd64 \
-            ./cmd/xiaomi-router-7day-refresh
-
-      - name: Package helper scripts
-        run: |
-          cp scripts/install.sh dist/install.sh
-          cp scripts/start.sh dist/start.sh
-          cp scripts/status.sh dist/status.sh
-          cp scripts/cleanup.sh dist/cleanup.sh
-          chmod +x dist/*.sh
-
-      - name: Verify release assets
-        run: |
-          test -s dist/install.sh
-          test -s dist/start.sh
-          test -s dist/status.sh
-          test -s dist/cleanup.sh
-          test -s dist/xiaomi-router-7day-refresh-linux-arm64
-          test -s dist/xiaomi-router-7day-refresh-linux-amd64
-
-      - name: Checksums
-        run: |
-          cd dist
-          sha256sum \
-            install.sh \
-            start.sh \
-            status.sh \
-            cleanup.sh \
-            xiaomi-router-7day-refresh-linux-arm64 \
-            xiaomi-router-7day-refresh-linux-amd64 > SHA256SUMS.txt
-          test -s SHA256SUMS.txt
+      - name: Build release bundle
+        run: make release
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,7 +42,12 @@ jobs:
             dist/start.sh
             dist/status.sh
             dist/cleanup.sh
+            dist/diagnose.sh
+            dist/upgrade.sh
             dist/xiaomi-router-7day-refresh-linux-arm64
             dist/xiaomi-router-7day-refresh-linux-amd64
             dist/SHA256SUMS.txt
+            dist/README.md
+            dist/TEST_REPORT.txt
+            dist/使用说明.txt
           generate_release_notes: true

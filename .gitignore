@@ -1,15 +1,15 @@
-# Build outputs
-bin/
 dist/
-dist/*.tmp
-*.exe
-*.test
-
-# Sensitive local files
-*.mobiledevicepairing
-*.plist
-*.p12
-*.mobileprovision
-config.yaml
+bin/
 *.log
-.env
+*.pid
+*.zip
+*.conf
+*.conf.*
+*.bak
+*.bak.*
+*.pre-v*
+.DS_Store
+.idea/
+.vscode/
+router-debug/
+local/
