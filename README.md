@@ -1,266 +1,203 @@
 # Xiaomi Router 7-Day Refresh for SideStore / LiveContainer
 
-Router-side helper for SideStore / LiveContainer refresh workflows on Xiaomi/OpenWrt routers.
+## 中文
 
-## v0.5.1 public release
+### 项目简介
 
-The validated SideStore endpoint is now the **Override Peer IP `10.7.0.1`**.
+这是一个运行在小米路由器 / OpenWrt 上的 SideStore / LiveContainer 路由器端辅助工具。
 
-The previous v0.4 experiment routed the auto-discovered Local VPN peer (`198.19.0.2`). That proved DHCP Option 121 and the router reflector worked, but SideStore could still keep its internal Device Endpoint uninitialized when an explicit override was configured.
+项目把发往 SideStore Override Peer `10.7.0.1` 的指定流量引导到路由器上的 TUN 反射器。反射器只交换 IPv4 源地址和目的地址，并重新计算 IPv4、TCP 或 UDP 校验和。这样，iPhone 连接家庭 Wi-Fi 时可以通过路由器完成所需的本地网络路径，而无需手机端 StosVPN / LocalDevVPN 持续接管所有流量。
 
-v0.5.x follows SideStore's override path instead:
+本项目不替代 SideStore 或 LiveContainer，也不会绕过 Apple ID、证书、App ID、配对文件或 Anisette 的限制。
 
-```text
-SideStore
-   |
-   | Override Peer = 10.7.0.1
-   v
-router-side host route / reflector
-   |
-   v
-iPhone local device service
-```
+### 解决的需求
 
-This path has been validated end-to-end on a wireless-repeater topology. No device-specific MAC address, LAN address, or router identifier is embedded in the public source.
+v0.5.x 只对配置中的一台 iPhone 生效，并支持两种常见家庭网络拓扑：
 
-## Supported topologies
+1. **主路由器模式**：iPhone 直接连接此路由器，且此路由器提供 DHCP 和默认网关。项目通过 dnsmasq 向目标 iPhone 下发 DHCP Option 121，将 `10.7.0.1/32` 指向此路由器。
+2. **无线中继 / 子路由器模式**：iPhone 连接子路由器，而 DHCP 和默认网关由上级路由器提供。项目只修改目标 iPhone 的上级 DHCP ACK，注入 `10.7.0.1/32` 路由，同时保留原来的默认网关。
+3. **窄范围处理**：两种模式都只将 `10.7.0.1/32` 路由到 `sidestore` TUN 接口；不会将 iPhone 的默认流量改道到本项目。
+4. **可维护运行状态**：提供安装、升级、启动、状态、诊断和清理脚本；清理时只移除项目创建的路由、iptables 链、TUN 接口、进程和 dnsmasq 片段。
 
-### Mode 1 — Main router
-
-Use this when the iPhone connects directly to the router and this router is also the DHCP server/default gateway.
+### 工作原理
 
 ```text
-iPhone
-  |
-  v
-Xiaomi/OpenWrt main router
-  |
-  v
-Internet
+iPhone -> 10.7.0.1
+             |
+             v
+      DHCP Option 121 主机路由
+             |
+             v
+    路由器 sidestore TUN 反射器
+             |
+             v
+10.7.0.1 -> iPhone 本地设备服务
 ```
 
-The project installs a MAC-targeted dnsmasq DHCP Option 121 entry for the selected iPhone:
+反射器保留 TCP / UDP 端口，仅交换 IPv4 源地址和目的地址。这符合设备端服务所需的本地回环通信方式。
 
-```text
-10.7.0.1/32 -> this router LAN IP
-0.0.0.0/0   -> this router LAN IP
-```
+### 前提条件
 
-The router then routes `10.7.0.1/32` into the project TUN reflector.
+通用要求：
 
-### Mode 2 — Wireless repeater / child router
+- 受你控制的 Xiaomi / OpenWrt 路由器，已开启 root SSH
+- `/dev/net/tun`、`ip`、`iptables`
+- `linux/arm64` 或 `linux/amd64`
+- iPhone 在该 Wi-Fi 下使用稳定的私有 Wi-Fi 地址 / MAC 地址
 
-Use this when the iPhone connects to a child/repeater router, while DHCP/default gateway are provided by an upstream router.
+主路由器模式还需要 dnsmasq 作为 LAN DHCP 服务，并有可用的 `conf-dir`。无线中继 / 子路由器模式还需要 bridge netfilter、iptables `physdev`/`string` 匹配和 AF_PACKET 原始套接字支持。
 
-```text
-iPhone
-  |
-  v
-Xiaomi child router / wireless repeater
-  |
-  v
-upstream main router (actual DHCP/default gateway)
-```
+### 安装与使用
 
-Because the child router is not the DHCP server, editing its dnsmasq configuration cannot change the iPhone lease. The project therefore:
-
-1. Watches bridged DHCP traffic with an AF_PACKET raw socket.
-2. Learns the actual phone-facing Wi-Fi bridge member from the iPhone DHCP Request.
-3. Observes the upstream DHCP ACK.
-4. Patches only the ACK for the configured iPhone Wi-Fi MAC.
-5. Adds Option 121:
-   - `10.7.0.1/32 -> child router LAN IP`
-   - `0.0.0.0/0 -> upstream default gateway`
-6. Sends the patched ACK directly back to the learned phone-facing interface.
-7. Drops only the original unpatched ACK for that iPhone; OFFER/NAK packets are not blocked.
-8. Routes `10.7.0.1/32` into the same TUN reflector as Mode 1.
-
-If the upstream ACK already contains Option 121, the injector prepends the SideStore `/32` route and preserves the existing Option 121 payload.
-
-## Reflector behavior
-
-Both modes use the same narrow reflector:
-
-```text
-phone-ip:client-port -> 10.7.0.1:device-port
-                 |
-                 v
-             sidestore TUN
-                 |
-       swap IPv4 src/dst only
-       recalculate IPv4/TCP/UDP checksums
-                 |
-                 v
-10.7.0.1:client-port -> phone-ip:device-port
-```
-
-TCP/UDP ports are intentionally not swapped. This matches the loopback-reflection behavior required by the device-side service.
-
-## SideStore expectation
-
-This release is designed for SideStore Local VPN / Remote Pairing where Connection Configuration shows:
-
-```text
-Override Peer IP: 10.7.0.1
-```
-
-The router can make that address reachable, but it cannot change SideStore's internal configuration. If a SideStore build uses a different/empty override address, update/configure SideStore accordingly before expecting this router target to become active.
-
-## Requirements
-
-Common:
-
-- root/SSH access on the router
-- Linux/OpenWrt-like system
-- `/dev/net/tun`
-- `ip`
-- `iptables`
-- ARM64 or AMD64
-
-Mode 1 additionally requires:
-
-- dnsmasq as LAN DHCP server
-- active dnsmasq `conf-dir`
-
-Mode 2 additionally requires:
-
-- bridge netfilter (`/proc/sys/net/bridge/bridge-nf-call-iptables`)
-- `iptables` `physdev` match
-- `iptables` `string` match
-- AF_PACKET raw sockets (`CONFIG_PACKET`)
-
-## Installation
-
-Upload/extract the release bundle on the router, then:
+从 [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases) 下载完整 Release 包，上传并解压到路由器后执行：
 
 ```sh
 cd /tmp/xiaomi-router-7day-refresh-release
 sh install.sh
 ```
 
-The installer asks for:
+安装器会询问网络拓扑、LAN/桥接接口、路由器 LAN IPv4、iPhone Wi-Fi MAC、TUN 接口，以及模式所需的 DHCP 参数。目标地址固定为 `10.7.0.1`。
 
-- topology: Main router or Wireless repeater / child router
-- LAN/bridge interface, usually `br-lan`
-- this router LAN IPv4
-- iPhone Wi-Fi MAC / Private Wi-Fi Address for this SSID
-- TUN interface name, usually `sidestore`
-- Mode 1: active dnsmasq `conf-dir`
-- Mode 2: upstream/default gateway IPv4
+首次安装、升级或切换拓扑后，请将 iPhone Wi-Fi 关闭再打开一次，以获取新的 DHCP 路由。
 
-The target is fixed to:
-
-```text
-10.7.0.1
-```
-
-After first installation or after changing topology, toggle the iPhone Wi-Fi OFF/ON once so a fresh DHCP ACK can install the `/32` route.
-
-## Installed files
-
-```text
-/data/xiaomi-router-7day-refresh
-/data/xiaomi-router-7day-refresh.conf
-/data/xiaomi-router-7day-refresh-start.sh
-/data/xiaomi-router-7day-refresh-status.sh
-/data/xiaomi-router-7day-refresh-cleanup.sh
-/data/xiaomi-router-7day-refresh-diagnose.sh
-```
-
-## Commands
-
-Manual start with a short delay:
+常用命令：
 
 ```sh
 START_DELAY=2 /data/xiaomi-router-7day-refresh-start.sh
-```
-
-`START_DELAY=2` only shortens the startup wait. The important v0.5 behavior is that the loaded config uses `TARGET="10.7.0.1"`.
-
-Status:
-
-```sh
 /data/xiaomi-router-7day-refresh-status.sh
-```
-
-Diagnostics:
-
-```sh
 /data/xiaomi-router-7day-refresh-diagnose.sh status
-/data/xiaomi-router-7day-refresh-diagnose.sh watch-dhcp
-/data/xiaomi-router-7day-refresh-diagnose.sh watch-target
-```
-
-Stop and clean:
-
-```sh
 /data/xiaomi-router-7day-refresh-cleanup.sh
 ```
 
-## Expected success indicators
+更多排查方法见 [故障排查](docs/troubleshooting.md) 和 [使用说明](docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.txt)。
 
-Mode 1:
+### 安全与隐私
 
-```text
-[OK] targeted DHCP Option121 snippet exists
-[OK] reflector process is running
-[OK] router route 10.7.0.1/32 uses sidestore
-```
+请只在自己拥有或明确获授权管理的网络中使用。本项目需要 root 权限，并会修改项目专属的路由、DHCP 和防火墙状态。
 
-Mode 2:
+公开仓库不应提交真实 iPhone MAC、路由器 MAC、真实 LAN / 网关地址、路由器配置、日志、抓包、配对文件、凭据或令牌。文档中的 `<...>` 均为占位符；`10.7.0.1` 是项目使用的 SideStore Override Peer，不是用户的家庭网络地址。
 
-```text
-learned iPhone ingress interface: wl...
-INJECTED DHCP ACK ... Option121 10.7.0.1/32 via <child-router-ip> + default via <upstream-gateway>
-```
+### 鸣谢与参考
 
-After SideStore Refresh:
+感谢下列项目、协议和资料为本项目提供思路或基础能力：
 
-```text
-reflector rewrote packet #...
-```
+- [SideStore](https://sidestore.io/) 与 [LiveContainer](https://github.com/LiveContainer/LiveContainer)：本项目服务的刷新和本地设备通信场景。
+- StosVPN / LocalDevVPN：对 SideStore 本地 VPN 通信路径的理解来源。
+- [xddxdd/sidestore-vpn](https://github.com/xddxdd/sidestore-vpn)：相关网络行为的参考。
+- [OpenWrt](https://openwrt.org/)、dnsmasq、Linux TUN 和 iptables：实现路由、DHCP 和数据包处理所依赖的平台能力。
+- [Juewuy 的小米路由器 SSH 教程](https://jwsc.eu.org/gDyfIPSsZ/)：小米路由器 SSH 场景的参考资料。
 
-In SideStore Health Check, the desired state is that `Override Peer IP` is `10.7.0.1` and becomes reachable/active.
+本项目与上述项目及作者没有从属、合作或官方认可关系。
 
-## Upgrade from v0.4
-
-v0.4 used `198.19.0.2`. v0.5 migrates to SideStore's explicit override endpoint `10.7.0.1`.
-
-Run:
-
-```sh
-sh upgrade.sh
-```
-
-The installer cleans the previous runtime, writes the new target, and asks for the current topology. The v0.5 cleanup/start scripts also remove legacy `198.19.0.2` route/bypass state when present.
-
-## Safety / rollback
-
-The cleanup script removes only project-owned runtime state:
-
-- project TUN route/interface
-- DHCP ACK interception rules
-- DHCP injector/reflector processes
-- project-owned dnsmasq snippet
-- project-owned reflector/NAT/mangle exceptions
-- legacy v0.4 `198.19.0.2` route/bypass state
-
-It does not change Apple account/certificate limits, create pairing files, or modify the upstream main router in repeater mode.
-
-## Build
+### 构建
 
 ```sh
 make test
 make vet
 make build
-```
-
-Release bundle:
-
-```sh
 make release
 ```
 
-## License
+许可证：MIT。
 
-MIT
+---
+
+## English
+
+### Project overview
+
+This is a router-side helper for SideStore / LiveContainer on Xiaomi router and OpenWrt systems.
+
+It directs traffic for the SideStore Override Peer, `10.7.0.1`, into a router-hosted TUN reflector. The reflector swaps only IPv4 source and destination addresses, then recalculates IPv4, TCP, or UDP checksums. When an iPhone joins the home Wi-Fi, this provides the required local-network path without requiring StosVPN / LocalDevVPN on the phone to continuously handle all traffic.
+
+This project does not replace SideStore or LiveContainer, and it does not bypass Apple ID, certificate, App ID, pairing-file, or Anisette requirements.
+
+### Requirements it addresses
+
+v0.5.x applies only to the configured iPhone and supports two common home-network topologies:
+
+1. **Main-router mode**: the iPhone connects directly to this router, which supplies DHCP and the default gateway. The project uses dnsmasq to send a targeted DHCP Option 121 route for `10.7.0.1/32` through this router.
+2. **Wireless repeater / child-router mode**: the iPhone connects to the child router while an upstream router supplies DHCP and the default gateway. The project patches only the selected iPhone's upstream DHCP ACK, adds the `10.7.0.1/32` route, and preserves the original default gateway.
+3. **Narrow traffic handling**: both modes route only `10.7.0.1/32` through the `sidestore` TUN interface; they do not redirect the iPhone's default traffic through this project.
+4. **Maintainable runtime state**: install, upgrade, start, status, diagnostics, and cleanup scripts are included. Cleanup removes only project-owned routes, iptables chains, TUN interfaces, processes, and dnsmasq snippets.
+
+### How it works
+
+```text
+iPhone -> 10.7.0.1
+             |
+             v
+      DHCP Option 121 host route
+             |
+             v
+     Router sidestore TUN reflector
+             |
+             v
+10.7.0.1 -> iPhone local device service
+```
+
+The reflector keeps TCP / UDP ports unchanged and swaps only IPv4 source and destination addresses. This matches the local loopback-style communication expected by the device-side service.
+
+### Prerequisites
+
+Common requirements:
+
+- A Xiaomi / OpenWrt router you control, with root SSH access
+- `/dev/net/tun`, `ip`, and `iptables`
+- `linux/arm64` or `linux/amd64`
+- A stable Private Wi-Fi Address / MAC address for the iPhone on this Wi-Fi network
+
+Main-router mode also requires dnsmasq as the LAN DHCP server and an active `conf-dir`. Wireless repeater / child-router mode also requires bridge netfilter, the iptables `physdev` and `string` matches, and AF_PACKET raw-socket support.
+
+### Install and use
+
+Download the complete package from [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases), upload and extract it on the router, then run:
+
+```sh
+cd /tmp/xiaomi-router-7day-refresh-release
+sh install.sh
+```
+
+The installer asks for the topology, LAN/bridge interface, router LAN IPv4 address, iPhone Wi-Fi MAC, TUN interface, and mode-specific DHCP values. The target is fixed at `10.7.0.1`.
+
+After the first installation, an upgrade, or a topology change, toggle iPhone Wi-Fi off and on once to receive the new DHCP route.
+
+Common commands:
+
+```sh
+START_DELAY=2 /data/xiaomi-router-7day-refresh-start.sh
+/data/xiaomi-router-7day-refresh-status.sh
+/data/xiaomi-router-7day-refresh-diagnose.sh status
+/data/xiaomi-router-7day-refresh-cleanup.sh
+```
+
+See [troubleshooting](docs/troubleshooting.md) and the [usage guide](docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.txt) for more detail.
+
+### Security and privacy
+
+Use this project only on networks you own or are explicitly authorized to manage. It requires root privileges and changes project-owned routing, DHCP, and firewall state.
+
+Do not commit real iPhone MAC addresses, router MAC addresses, LAN / gateway addresses, router configurations, logs, packet captures, pairing files, credentials, or tokens. `<...>` values in the documentation are placeholders. `10.7.0.1` is the SideStore Override Peer used by this project, not a home-network address.
+
+### Credits and references
+
+Thanks to these projects, technologies, and materials for ideas or foundational capabilities:
+
+- [SideStore](https://sidestore.io/) and [LiveContainer](https://github.com/LiveContainer/LiveContainer), the refresh and local-device communication scenarios this project supports.
+- StosVPN / LocalDevVPN, which informed the understanding of SideStore's local VPN path.
+- [xddxdd/sidestore-vpn](https://github.com/xddxdd/sidestore-vpn), a reference for related network behavior.
+- [OpenWrt](https://openwrt.org/), dnsmasq, Linux TUN, and iptables, which provide the routing, DHCP, and packet-processing platform capabilities.
+- [Juewuy's Xiaomi router SSH guide](https://jwsc.eu.org/gDyfIPSsZ/), a reference for Xiaomi router SSH setups.
+
+This project is not affiliated with, sponsored by, or officially endorsed by any of the projects or authors above.
+
+### Build
+
+```sh
+make test
+make vet
+make build
+make release
+```
+
+License: MIT.
