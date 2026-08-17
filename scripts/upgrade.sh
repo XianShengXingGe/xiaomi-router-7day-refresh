@@ -3,11 +3,9 @@
 
 set -u
 
-REPO="${REPO:-XianShengXingGe/xiaomi-router-7day-refresh}"
-VERSION="${VERSION:-latest}"
-APP_NAME="${APP_NAME:-xiaomi-router-7day-refresh}"
-CONFIG="${CONFIG:-/data/$APP_NAME.conf}"
-INSTALLER="/tmp/$APP_NAME-install.$$"
+REPO="XianShengXingGe/xiaomi-router-7day-refresh"
+CONFIG="/data/xiaomi-router-7day-refresh.conf"
+INSTALLER="/tmp/xiaomi-router-7day-refresh-install.$$"
 
 die() { echo "[ERROR] $*" >&2; exit 1; }
 
@@ -28,23 +26,13 @@ download() {
 cleanup() { rm -f "$INSTALLER"; }
 trap cleanup 0
 
-if [ "$VERSION" = "latest" ]; then
-  BASE="https://github.com/$REPO/releases/latest/download"
-else
-  BASE="https://github.com/$REPO/releases/download/$VERSION"
-fi
+BASE="https://github.com/$REPO/releases/latest/download"
 
 echo "[INFO] Downloading GitHub installer: $BASE/install.sh"
 download "$BASE/install.sh" "$INSTALLER" || die "Failed to download the GitHub installer."
 
-if [ -f "$CONFIG" ]; then
-  BACKUP="$CONFIG.pre-upgrade.$(date +%Y%m%d%H%M%S 2>/dev/null || echo backup)"
-  cp "$CONFIG" "$BACKUP" || die "Could not back up existing config to $BACKUP"
-  echo "[OK] existing config backed up: $BACKUP"
-fi
-
 echo "[INFO] Starting interactive upgrade to SideStore Override Peer 10.7.0.1."
-echo "[INFO] The downloaded installer will ask for the current router topology."
+echo "[INFO] The downloaded installer will back up the existing config and ask for the current router topology."
 sh "$INSTALLER" "$@"
 status=$?
 exit "$status"
