@@ -1,6 +1,11 @@
-# Public release notes — v0.5.1-public
+# Public release notes — v0.5.2-public
 
 This package is prepared for publishing to GitHub.
+
+## v0.5.2-public changes
+
+- `upgrade.sh` downloads the latest GitHub `install.sh` before running it, so a standalone SSH-downloaded upgrade script updates the router from GitHub.
+- README and the Chinese usage guide document direct SSH installation and upgrade commands using curl.
 
 ## Privacy / desensitization
 

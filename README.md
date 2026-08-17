@@ -49,7 +49,27 @@ iPhone -> 10.7.0.1
 
 ### 安装与使用
 
-从 [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases) 下载完整 Release 包，上传并解压到路由器后执行：
+在路由器 SSH 中直接从 GitHub 安装最新正式版本（旧版 BusyBox `wget` 不支持 HTTPS 时请使用已有的 `curl`）：
+
+```sh
+cd /tmp
+rm -f xiaomi-router-7day-refresh-install.sh
+curl -fLk -o xiaomi-router-7day-refresh-install.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+sh xiaomi-router-7day-refresh-install.sh
+```
+
+更新到 GitHub 上的最新版本：
+
+```sh
+cd /tmp
+rm -f xiaomi-router-7day-refresh-upgrade.sh
+curl -fLk -o xiaomi-router-7day-refresh-upgrade.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh'
+sh xiaomi-router-7day-refresh-upgrade.sh
+```
+
+`upgrade.sh` 会再次从 GitHub 下载最新的 `install.sh`，因此不依赖同目录存在旧安装器。也可以从 [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases) 下载完整 Release 包，上传并解压到路由器后执行：
 
 ```sh
 cd /tmp/xiaomi-router-7day-refresh-release
@@ -151,7 +171,27 @@ Main-router mode also requires dnsmasq as the LAN DHCP server and an active `con
 
 ### Install and use
 
-Download the complete package from [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases), upload and extract it on the router, then run:
+Install the latest published version directly from the router's SSH shell. Some older BusyBox `wget` builds do not support HTTPS, so use the available `curl`:
+
+```sh
+cd /tmp
+rm -f xiaomi-router-7day-refresh-install.sh
+curl -fLk -o xiaomi-router-7day-refresh-install.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+sh xiaomi-router-7day-refresh-install.sh
+```
+
+Update to the latest GitHub version:
+
+```sh
+cd /tmp
+rm -f xiaomi-router-7day-refresh-upgrade.sh
+curl -fLk -o xiaomi-router-7day-refresh-upgrade.sh \
+  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh'
+sh xiaomi-router-7day-refresh-upgrade.sh
+```
+
+`upgrade.sh` downloads the latest `install.sh` from GitHub before running it, so it does not depend on an older installer being beside it. You can also download the complete package from [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases), upload and extract it on the router, then run:
 
 ```sh
 cd /tmp/xiaomi-router-7day-refresh-release

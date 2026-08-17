@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2-public
+
+- Added a self-updating `upgrade.sh` that downloads the latest GitHub `install.sh` before running it.
+- Documented direct SSH installation and upgrade commands using curl.
+- Bumped the helper version reported by the binary to `0.5.2-public`.
+
 ## 0.5.1-public
 
 - Prepared a desensitized GitHub-ready release.
