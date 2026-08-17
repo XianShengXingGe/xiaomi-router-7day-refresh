@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	appVersion = "0.5.1-public"
+	appVersion = "0.5.2-public"
 
 	tunDevice  = "/dev/net/tun"
 	tunSetIFF  = 0x400454ca

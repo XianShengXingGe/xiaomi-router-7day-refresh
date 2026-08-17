@@ -1,4 +1,4 @@
-Xiaomi Router 7-Day Refresh 0.5.0 双拓扑正式版
+Xiaomi Router 7-Day Refresh 0.5.x 双拓扑正式版
 
 核心目标：SideStore Override Peer = 10.7.0.1
 
@@ -20,7 +20,19 @@ Xiaomi Router 7-Day Refresh 0.5.0 双拓扑正式版
 两种方式最终使用同一个 TUN reflector：
 10.7.0.1/32 -> sidestore TUN -> 交换 IPv4 源/目的地址 -> 重算 checksum -> 返回 iPhone。
 
-安装：
+直接安装最新 GitHub 版本：
+  cd /tmp
+  rm -f xiaomi-router-7day-refresh-install.sh
+  curl -fLk -o xiaomi-router-7day-refresh-install.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
+  sh xiaomi-router-7day-refresh-install.sh
+
+直接更新到最新 GitHub 版本：
+  cd /tmp
+  rm -f xiaomi-router-7day-refresh-upgrade.sh
+  curl -fLk -o xiaomi-router-7day-refresh-upgrade.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh'
+  sh xiaomi-router-7day-refresh-upgrade.sh
+
+也可以从 Release 包中执行：
   cd /tmp/xiaomi-router-7day-refresh-release
   sh install.sh
 

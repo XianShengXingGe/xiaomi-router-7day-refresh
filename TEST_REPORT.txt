@@ -1,4 +1,4 @@
-Xiaomi Router 7-Day Refresh 0.5.1-public
+Xiaomi Router 7-Day Refresh 0.5.2-public
 
 Automated validation:
 - Go unit tests for IPv4 reflector rewrite/checksum.
