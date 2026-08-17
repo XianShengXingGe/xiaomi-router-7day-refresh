@@ -4,7 +4,6 @@
 set -u
 
 REPO="XianShengXingGe/xiaomi-router-7day-refresh"
-CONFIG="/data/xiaomi-router-7day-refresh.conf"
 INSTALLER="/tmp/xiaomi-router-7day-refresh-install.$$"
 
 die() { echo "[ERROR] $*" >&2; exit 1; }
