@@ -40,9 +40,9 @@
 用电脑或手机终端 SSH 登录你的路由器后台（例如 `ssh root@192.168.31.1`），然后复制粘贴以下命令回车：
 
 ```sh
-cd /tmp && rm -f install.sh && (curl -fLk -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' || curl -fLk -o install.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh') && sh install.sh
+cd /tmp && rm -f install.sh && (curl -fLk --connect-timeout 4 -o install.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/install.sh' || curl -fLk --connect-timeout 4 -o install.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' || curl -fLk --connect-timeout 4 -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh') && sh install.sh
 ```
-*(命令内置国内 CDN 镜像加速与官方源双重自动回退，国内网络秒级下载)*
+*(命令内置 jsDelivr 全球 CDN 与多线路国内镜像自动竞速回退，国内网络秒级下载)*
 
 #### 终端安装引导（极简 3 步）：
 
@@ -79,7 +79,7 @@ cd /tmp && rm -f install.sh && (curl -fLk -o install.sh 'https://ghproxy.net/htt
   ```
 - **一键在线升级到最新版本**：
   ```sh
-  cd /tmp && rm -f upgrade.sh && (curl -fLk -o upgrade.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh' || curl -fLk -o upgrade.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh') && sh upgrade.sh
+  cd /tmp && rm -f upgrade.sh && (curl -fLk --connect-timeout 4 -o upgrade.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/upgrade.sh' || curl -fLk --connect-timeout 4 -o upgrade.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh' || curl -fLk --connect-timeout 4 -o upgrade.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh') && sh upgrade.sh
   ```
 - **排错诊断与抓包**：
   ```sh
@@ -139,7 +139,7 @@ It moves all the network loopback handling directly to your home **Xiaomi / Open
 Log in to your router via SSH (e.g., `ssh root@192.168.31.1`) and run:
 
 ```sh
-cd /tmp && rm -f install.sh && (curl -fLk -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' || curl -fLk -o install.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh') && sh install.sh
+cd /tmp && rm -f install.sh && (curl -fLk --connect-timeout 4 -o install.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/install.sh' || curl -fLk --connect-timeout 4 -o install.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' || curl -fLk --connect-timeout 4 -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh') && sh install.sh
 ```
 
 #### Simple Interactive Steps:
@@ -174,7 +174,7 @@ cd /tmp && rm -f install.sh && (curl -fLk -o install.sh 'https://ghproxy.net/htt
   ```
 - **One-click Upgrade**:
   ```sh
-  cd /tmp && rm -f upgrade.sh && (curl -fLk -o upgrade.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh' || curl -fLk -o upgrade.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh') && sh upgrade.sh
+  cd /tmp && rm -f upgrade.sh && (curl -fLk --connect-timeout 4 -o upgrade.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/upgrade.sh' || curl -fLk --connect-timeout 4 -o upgrade.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh' || curl -fLk --connect-timeout 4 -o upgrade.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh') && sh upgrade.sh
   ```
 - **Diagnostics & Packet Inspection**:
   ```sh
