@@ -1,243 +1,202 @@
-# Xiaomi Router 7-Day Refresh for SideStore / LiveContainer
+# 🚀 Xiaomi Router 7-Day Refresh for SideStore / LiveContainer
+> 小米 / OpenWrt 路由器端 SideStore 7 天免电脑无感自动续签辅助工具  
+> Effortless 7-Day SideStore / LiveContainer refresh helper on Xiaomi & OpenWrt routers.
 
-## 中文
-
-### 项目简介
-
-这是一个运行在小米路由器 / OpenWrt 上的 SideStore / LiveContainer 路由器端辅助工具。
-
-项目把发往 SideStore Override Peer `10.7.0.1` 的指定流量引导到路由器上的 TUN 反射器。反射器只交换 IPv4 源地址和目的地址，并重新计算 IPv4、TCP 或 UDP 校验和。这样，iPhone 连接家庭 Wi-Fi 时可以通过路由器完成所需的本地网络路径，而无需手机端 StosVPN / LocalDevVPN 持续接管所有流量。
-
-本项目不替代 SideStore 或 LiveContainer，也不会绕过 Apple ID、证书、App ID、配对文件或 Anisette 的限制。
-
-### 解决的需求
-
-v0.5.x 只对配置中的一台 iPhone 生效，并支持两种常见家庭网络拓扑：
-
-1. **主路由器模式**：iPhone 直接连接此路由器，且此路由器提供 DHCP 和默认网关。项目通过 dnsmasq 向目标 iPhone 下发 DHCP Option 121，将 `10.7.0.1/32` 指向此路由器。
-2. **无线中继 / 子路由器模式**：iPhone 连接子路由器，而 DHCP 和默认网关由上级路由器提供。项目只修改目标 iPhone 的上级 DHCP ACK，注入 `10.7.0.1/32` 路由，同时保留原来的默认网关。
-3. **窄范围处理**：两种模式都只将 `10.7.0.1/32` 路由到 `sidestore` TUN 接口；不会将 iPhone 的默认流量改道到本项目。
-4. **可维护运行状态**：提供安装、升级、启动、状态、诊断和清理脚本；清理时只移除项目创建的路由、iptables 链、TUN 接口、进程和 dnsmasq 片段。
-
-### 工作原理
-
-```text
-iPhone -> 10.7.0.1
-             |
-             v
-      DHCP Option 121 主机路由
-             |
-             v
-    路由器 sidestore TUN 反射器
-             |
-             v
-10.7.0.1 -> iPhone 本地设备服务
-```
-
-反射器保留 TCP / UDP 端口，仅交换 IPv4 源地址和目的地址。这符合设备端服务所需的本地回环通信方式。
-
-### 前提条件
-
-通用要求：
-
-- 受你控制的 Xiaomi / OpenWrt 路由器，已开启 root SSH
-- `/dev/net/tun`、`ip`、`iptables`
-- `linux/arm64` 或 `linux/amd64`
-- iPhone 在该 Wi-Fi 下使用稳定的私有 Wi-Fi 地址 / MAC 地址
-
-主路由器模式还需要 dnsmasq 作为 LAN DHCP 服务，并有可用的 `conf-dir`。无线中继 / 子路由器模式还需要 bridge netfilter、iptables `physdev`/`string` 匹配和 AF_PACKET 原始套接字支持。
-
-### 安装与使用
-
-在路由器 SSH 中直接从 GitHub 安装最新正式版本（旧版 BusyBox `wget` 不支持 HTTPS 时请使用已有的 `curl`）：
-
-```sh
-cd /tmp
-rm -f xiaomi-router-7day-refresh-install.sh
-curl -fLk -o xiaomi-router-7day-refresh-install.sh \
-  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
-sh xiaomi-router-7day-refresh-install.sh
-```
-
-更新到 GitHub 上的最新版本：
-
-```sh
-cd /tmp
-rm -f xiaomi-router-7day-refresh-upgrade.sh
-curl -fLk -o xiaomi-router-7day-refresh-upgrade.sh \
-  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh'
-sh xiaomi-router-7day-refresh-upgrade.sh
-```
-
-`upgrade.sh` 会再次从 GitHub 下载最新的 `install.sh`，因此不依赖同目录存在旧安装器。也可以从 [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases) 下载完整 Release 包，上传并解压到路由器后执行：
-
-```sh
-cd /tmp/xiaomi-router-7day-refresh-release
-sh install.sh
-```
-
-安装器会询问网络拓扑、LAN/桥接接口、路由器 LAN IPv4、iPhone Wi-Fi MAC、TUN 接口，以及模式所需的 DHCP 参数。目标地址固定为 `10.7.0.1`。
-
-首次安装、升级或切换拓扑后，请将 iPhone Wi-Fi 关闭再打开一次，以获取新的 DHCP 路由。
-
-常用命令：
-
-```sh
-START_DELAY=2 /data/xiaomi-router-7day-refresh-start.sh
-/data/xiaomi-router-7day-refresh-status.sh
-/data/xiaomi-router-7day-refresh-diagnose.sh status
-/data/xiaomi-router-7day-refresh-cleanup.sh
-```
-
-更多排查方法见 [故障排查](docs/troubleshooting.md) 和 [使用说明](docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.txt)。
-
-### 安全与隐私
-
-请只在自己拥有或明确获授权管理的网络中使用。本项目需要 root 权限，并会修改项目专属的路由、DHCP 和防火墙状态。
-
-公开仓库不应提交真实 iPhone MAC、路由器 MAC、真实 LAN / 网关地址、路由器配置、日志、抓包、配对文件、凭据或令牌。文档中的 `<...>` 均为占位符；`10.7.0.1` 是项目使用的 SideStore Override Peer，不是用户的家庭网络地址。
-
-### 鸣谢与参考
-
-感谢下列项目、协议和资料为本项目提供思路或基础能力：
-
-- [SideStore](https://sidestore.io/) 与 [LiveContainer](https://github.com/LiveContainer/LiveContainer)：本项目服务的刷新和本地设备通信场景。
-- StosVPN / LocalDevVPN：对 SideStore 本地 VPN 通信路径的理解来源。
-- [xddxdd/sidestore-vpn](https://github.com/xddxdd/sidestore-vpn)：相关网络行为的参考。
-- [OpenWrt](https://openwrt.org/)、dnsmasq、Linux TUN 和 iptables：实现路由、DHCP 和数据包处理所依赖的平台能力。
-- [Juewuy 的小米路由器 SSH 教程](https://jwsc.eu.org/gDyfIPSsZ/)：小米路由器 SSH 场景的参考资料。
-
-本项目与上述项目及作者没有从属、合作或官方认可关系。
-
-### 构建
-
-```sh
-make test
-make vet
-make build
-make release
-```
-
-许可证：MIT。
+[中文使用指南](#-中文使用指南) | [English Guide](#-english-guide)
 
 ---
 
-## English
+## 📖 中文使用指南
 
-### Project overview
+### 💡 这是什么？解决了什么问题？
 
-This is a router-side helper for SideStore / LiveContainer on Xiaomi router and OpenWrt systems.
+如果你在 iPhone 上使用 **SideStore** 或 **LiveContainer**（免越狱安装 IPA、微信多开、游戏模拟器等），苹果规定个人免费证书每 **7 天**必须刷新一次签名，否则应用会闪退打不开。
 
-It directs traffic for the SideStore Override Peer, `10.7.0.1`, into a router-hosted TUN reflector. The reflector swaps only IPv4 source and destination addresses, then recalculates IPv4, TCP, or UDP checksums. When an iPhone joins the home Wi-Fi, this provides the required local-network path without requiring StosVPN / LocalDevVPN on the phone to continuously handle all traffic.
+传统刷新方式的痛点：
+- ❌ **依赖电脑**：每周都要打开电脑插线或连局域网，极其麻烦；
+- ❌ **依赖手机端 VPN / 代理 App**：需要在 iPhone 上安装配置 Loon、Surge 等付费代理软件，或者开启手机自带 VPN 经常报错 `DeviceEndpoint 未初始化`、连接超时。
 
-This project does not replace SideStore or LiveContainer, and it does not bypass Apple ID, certificate, App ID, pairing-file, or Anisette requirements.
+🎉 **本项目带来的改变：**
+把所有繁琐的网络通信逻辑直接搬到家里的**小米 / OpenWrt 路由器**上！
+- ✨ **手机零负担**：iPhone 不需要安装任何代理 App，也不用常驻 VPN。
+- ✨ **只要连上 Wi-Fi 就能刷**：回家连上 Wi-Fi，打开 SideStore 点击 **Refresh** 即可秒级续签成功！
+- ✨ **全家上网不受影响**：只对你指定的这台 iPhone 生效，且只处理签名刷新流量，完全不影响正常刷视频、玩游戏。
+- ✨ **支持无线中继/子路由**：即使你的小米路由只是挂在光猫或主路由下面的副路由，也能完美支持！
 
-### Requirements it addresses
+---
 
-v0.5.x applies only to the configured iPhone and supports two common home-network topologies:
+### 🛠️ 准备工作
 
-1. **Main-router mode**: the iPhone connects directly to this router, which supplies DHCP and the default gateway. The project uses dnsmasq to send a targeted DHCP Option 121 route for `10.7.0.1/32` through this router.
-2. **Wireless repeater / child-router mode**: the iPhone connects to the child router while an upstream router supplies DHCP and the default gateway. The project patches only the selected iPhone's upstream DHCP ACK, adds the `10.7.0.1/32` route, and preserves the original default gateway.
-3. **Narrow traffic handling**: both modes route only `10.7.0.1/32` through the `sidestore` TUN interface; they do not redirect the iPhone's default traffic through this project.
-4. **Maintainable runtime state**: install, upgrade, start, status, diagnostics, and cleanup scripts are included. Cleanup removes only project-owned routes, iptables chains, TUN interfaces, processes, and dnsmasq snippets.
+1. **一台小米或 OpenWrt 路由器**：已开启 SSH 登录权限（[参考小米路由器开启 SSH 教程](https://jwsc.eu.org/gDyfIPSsZ/)）。
+2. **获取 iPhone 的 Wi-Fi MAC 地址**：
+   - 打开 iPhone **「设置」 -> 「无线局域网 (Wi-Fi)」**；
+   - 点击当前连接的 Wi-Fi 名字右侧的 **蓝色 `(i)` 图标**；
+   - 找到 **「私有无线局域网地址」**（例如 `AA:BB:CC:DD:EE:FF`），复制或记下来。
 
-### How it works
+---
 
-```text
-iPhone -> 10.7.0.1
-             |
-             v
-      DHCP Option 121 host route
-             |
-             v
-     Router sidestore TUN reflector
-             |
-             v
-10.7.0.1 -> iPhone local device service
-```
+### 🚀 超简单安装步骤（只需 3 步）
 
-The reflector keeps TCP / UDP ports unchanged and swaps only IPv4 source and destination addresses. This matches the local loopback-style communication expected by the device-side service.
-
-### Prerequisites
-
-Common requirements:
-
-- A Xiaomi / OpenWrt router you control, with root SSH access
-- `/dev/net/tun`, `ip`, and `iptables`
-- `linux/arm64` or `linux/amd64`
-- A stable Private Wi-Fi Address / MAC address for the iPhone on this Wi-Fi network
-
-Main-router mode also requires dnsmasq as the LAN DHCP server and an active `conf-dir`. Wireless repeater / child-router mode also requires bridge netfilter, the iptables `physdev` and `string` matches, and AF_PACKET raw-socket support.
-
-### Install and use
-
-Install the latest published version directly from the router's SSH shell. Some older BusyBox `wget` builds do not support HTTPS, so use the available `curl`:
+用电脑或手机终端 SSH 登录你的路由器后台（例如 `ssh root@192.168.31.1`），然后复制粘贴以下命令回车：
 
 ```sh
-cd /tmp
-rm -f xiaomi-router-7day-refresh-install.sh
-curl -fLk -o xiaomi-router-7day-refresh-install.sh \
-  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh'
-sh xiaomi-router-7day-refresh-install.sh
+cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' && sh install.sh
 ```
+*(国内网络如果下载缓慢，安装脚本会自动尝试国内镜像加速)*
 
-Update to the latest GitHub version:
+#### 终端安装引导（极简 3 步）：
+
+1. **选择拓扑模式**：
+   - 如果家里只有这一台小米路由器，输入 `1`（主路由模式）；
+   - 如果这台小米路由器是插在光猫或其他主路由下面的（或者无线中继），直接按回车 `2`（无线中继模式，**最推荐**）。
+2. **输入 iPhone MAC 地址**：
+   - 粘贴你在准备工作中查到的 iPhone Wi-Fi MAC 地址，按回车。
+3. **确认安装**：
+   - 屏幕会显示自动探测到的路由器 IP 和网关，**直接按 [回车] 即可一键完成安装并启动**！
+
+---
+
+### 📱 首次激活与日常使用
+
+1. **首次激活（重要）**：
+   - 安装完成后，在 iPhone 上 **关闭 Wi-Fi -> 等待 2~3 秒 -> 重新打开 Wi-Fi 连接**（让手机重新获取路由器下发的刷新路由）。
+2. **开始刷新**：
+   - 打开 iPhone 上的 **SideStore**，点击 **Refresh All**；
+   - 此时你会发现签名进度条飞速跑完，刷新成功！🎉
+3. **日常使用**：
+   - 以后只要连着家里 Wi-Fi，随时随地打开 SideStore 即可一键刷新，再也不用担心 7 天过期。
+
+---
+
+### 📋 常用管理命令
+
+在路由器 SSH 中随时可执行以下快捷命令：
+
+- **查看运行状态与反射数据统计**：
+  ```sh
+  /data/xiaomi-router-7day-refresh-status.sh
+  ```
+- **一键在线升级到最新版本**：
+  ```sh
+  cd /tmp && curl -fLk -o upgrade.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh' && sh upgrade.sh
+  ```
+- **排错诊断与抓包**：
+  ```sh
+  /data/xiaomi-router-7day-refresh-diagnose.sh
+  ```
+- **完全卸载与清理服务**：
+  ```sh
+  /data/xiaomi-router-7day-refresh-cleanup.sh
+  ```
+
+---
+
+### 💖 鸣谢与参考 (Credits & References)
+
+特别感谢以下开源项目与社区资料为本项目带来的灵感与技术基石：
+
+- **[SideStore](https://sidestore.io/)** 与 **[LiveContainer](https://github.com/LiveContainer/LiveContainer)**：伟大的 iOS 免越狱应用侧载与签名方案。
+- **StosVPN / LocalDevVPN** 以及 **[xddxdd/sidestore-vpn](https://github.com/xddxdd/sidestore-vpn)**：为 SideStore 设备回环通信机制提供的技术探索参考。
+- **[OpenWrt](https://openwrt.org/)**、**dnsmasq** 与 **Linux TUN / iptables**：提供强大的底层路由、DHCP 注入与网络包处理能力。
+- **[Juewuy 的小米路由器 SSH 教程](https://jwsc.eu.org/gDyfIPSsZ/)**：为小米路由器开启 SSH 提供的优秀教程指引。
+
+---
+
+<br/>
+
+## 🌐 English Guide
+
+### 💡 What is this? What problem does it solve?
+
+When using **SideStore** or **LiveContainer** on iOS (for sideloading IPAs without jailbreaking), Apple requires free developer certificates to be refreshed every **7 days**, otherwise apps will fail to launch.
+
+Traditional refresh methods:
+- ❌ **Require a PC/Mac**: Connecting over USB or local network every week is tedious.
+- ❌ **Require VPN / Proxy apps on iPhone**: Configuring third-party proxies (like Loon/Surge) or iPhone-side VPNs often suffers from timeouts or uninitialized device endpoint errors.
+
+🎉 **What this project does:**
+It moves all the network loopback handling directly to your home **Xiaomi / OpenWrt router**!
+- ✨ **Zero iPhone modification**: No need for proxy apps or persistent VPN tunnels on your phone.
+- ✨ **Refresh over home Wi-Fi**: Just connect to Wi-Fi and tap **Refresh** in SideStore!
+- ✨ **Completely isolated**: Only affects the specified iPhone and SideStore refresh traffic (`10.7.0.1/32`), without affecting normal internet usage for other devices.
+- ✨ **Supports wireless repeater / AP mode**: Works seamlessly even if your Xiaomi router is a child/secondary router behind an ISP modem.
+
+---
+
+### 🛠️ Preparation
+
+1. **A Xiaomi or OpenWrt router** with root SSH access ([Xiaomi SSH Guide](https://jwsc.eu.org/gDyfIPSsZ/)).
+2. **Find your iPhone's Wi-Fi MAC Address**:
+   - On your iPhone, go to **Settings -> Wi-Fi**.
+   - Tap the blue **`(i)` icon** next to your connected Wi-Fi name.
+   - Copy the **Private Wi-Fi Address** (e.g. `AA:BB:CC:DD:EE:FF`).
+
+---
+
+### 🚀 Quick 3-Step Installation
+
+Log in to your router via SSH (e.g., `ssh root@192.168.31.1`) and run:
 
 ```sh
-cd /tmp
-rm -f xiaomi-router-7day-refresh-upgrade.sh
-curl -fLk -o xiaomi-router-7day-refresh-upgrade.sh \
-  'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh'
-sh xiaomi-router-7day-refresh-upgrade.sh
+cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' && sh install.sh
 ```
 
-`upgrade.sh` downloads the latest `install.sh` from GitHub before running it, so it does not depend on an older installer being beside it. You can also download the complete package from [Releases](https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases), upload and extract it on the router, then run:
+#### Simple Interactive Steps:
 
-```sh
-cd /tmp/xiaomi-router-7day-refresh-release
-sh install.sh
-```
+1. **Choose Topology**:
+   - `1` for Main Router (if this is your only router).
+   - `2` for Wireless Repeater / Child Router (Recommended, if connected behind another upstream router/modem).
+2. **Enter iPhone Wi-Fi MAC**:
+   - Paste your iPhone's Private Wi-Fi MAC address and hit Enter.
+3. **Confirm and Install**:
+   - Review the auto-detected settings and **press [Enter]** to complete installation and start the service!
 
-The installer asks for the topology, LAN/bridge interface, router LAN IPv4 address, iPhone Wi-Fi MAC, TUN interface, and mode-specific DHCP values. The target is fixed at `10.7.0.1`.
+---
 
-After the first installation, an upgrade, or a topology change, toggle iPhone Wi-Fi off and on once to receive the new DHCP route.
+### 📱 Activation and Usage
 
-Common commands:
+1. **Initial Activation**:
+   - Turn iPhone **Wi-Fi OFF -> Wait 2 seconds -> Turn Wi-Fi ON** to receive the new DHCP route.
+2. **Refresh**:
+   - Open **SideStore** and tap **Refresh All**. The apps will refresh instantly!
+3. **Daily Routine**:
+   - Whenever you are home connected to Wi-Fi, open SideStore to refresh anytime.
 
-```sh
-START_DELAY=2 /data/xiaomi-router-7day-refresh-start.sh
-/data/xiaomi-router-7day-refresh-status.sh
-/data/xiaomi-router-7day-refresh-diagnose.sh status
-/data/xiaomi-router-7day-refresh-cleanup.sh
-```
+---
 
-See [troubleshooting](docs/troubleshooting.md) and the [usage guide](docs/%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.txt) for more detail.
+### 📋 Useful Commands
 
-### Security and privacy
+- **Check Service & Traffic Status**:
+  ```sh
+  /data/xiaomi-router-7day-refresh-status.sh
+  ```
+- **One-click Upgrade**:
+  ```sh
+  cd /tmp && curl -fLk -o upgrade.sh 'https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/upgrade.sh' && sh upgrade.sh
+  ```
+- **Diagnostics & Packet Inspection**:
+  ```sh
+  /data/xiaomi-router-7day-refresh-diagnose.sh
+  ```
+- **Stop and Uninstall**:
+  ```sh
+  /data/xiaomi-router-7day-refresh-cleanup.sh
+  ```
 
-Use this project only on networks you own or are explicitly authorized to manage. It requires root privileges and changes project-owned routing, DHCP, and firewall state.
+---
 
-Do not commit real iPhone MAC addresses, router MAC addresses, LAN / gateway addresses, router configurations, logs, packet captures, pairing files, credentials, or tokens. `<...>` values in the documentation are placeholders. `10.7.0.1` is the SideStore Override Peer used by this project, not a home-network address.
+### 💖 Credits & References
 
-### Credits and references
+Special thanks to the following open-source projects and communities:
 
-Thanks to these projects, technologies, and materials for ideas or foundational capabilities:
+- **[SideStore](https://sidestore.io/)** & **[LiveContainer](https://github.com/LiveContainer/LiveContainer)**: Revolutionary iOS sideloading and app refresh platforms.
+- **StosVPN / LocalDevVPN** & **[xddxdd/sidestore-vpn](https://github.com/xddxdd/sidestore-vpn)**: Foundational insights into SideStore device loopback communication.
+- **[OpenWrt](https://openwrt.org/)**, **dnsmasq**, and **Linux TUN / iptables**: Powerful routing, DHCP injection, and packet handling capabilities.
+- **[Juewuy's Xiaomi Router SSH Guide](https://jwsc.eu.org/gDyfIPSsZ/)**: Excellent reference for unlocking SSH on Xiaomi routers.
 
-- [SideStore](https://sidestore.io/) and [LiveContainer](https://github.com/LiveContainer/LiveContainer), the refresh and local-device communication scenarios this project supports.
-- StosVPN / LocalDevVPN, which informed the understanding of SideStore's local VPN path.
-- [xddxdd/sidestore-vpn](https://github.com/xddxdd/sidestore-vpn), a reference for related network behavior.
-- [OpenWrt](https://openwrt.org/), dnsmasq, Linux TUN, and iptables, which provide the routing, DHCP, and packet-processing platform capabilities.
-- [Juewuy's Xiaomi router SSH guide](https://jwsc.eu.org/gDyfIPSsZ/), a reference for Xiaomi router SSH setups.
+---
 
-This project is not affiliated with, sponsored by, or officially endorsed by any of the projects or authors above.
+### 📄 License
 
-### Build
+This project is licensed under the [MIT License](LICENSE).
 
-```sh
-make test
-make vet
-make build
-make release
-```
-
-License: MIT.
