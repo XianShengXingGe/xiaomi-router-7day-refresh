@@ -44,6 +44,21 @@ cd /tmp && rm -f install.sh && (curl -fLk --connect-timeout 4 -o install.sh 'htt
 ```
 *(命令内置 jsDelivr 全球 CDN 与多线路国内镜像自动竞速回退，国内网络秒级下载)*
 
+> 💡 **国内网络备选镜像指南**：
+> 如果路由器出现 `Couldn't resolve host 'github.com'` 或直连下载超时，可直接使用以下任一独立镜像命令安装：
+> - **jsDelivr CDN 直连（首选推荐，国内无需解析 GitHub）**：
+>   ```sh
+>   cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/install.sh' && sh install.sh
+>   ```
+> - **ghfast.top 高速专线镜像**：
+>   ```sh
+>   cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' && sh install.sh
+>   ```
+> - **ghproxy.net 备用镜像**：
+>   ```sh
+>   cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' && sh install.sh
+>   ```
+
 #### 终端安装引导（极简 3 步）：
 
 1. **选择拓扑模式**：
@@ -141,6 +156,21 @@ Log in to your router via SSH (e.g., `ssh root@192.168.31.1`) and run:
 ```sh
 cd /tmp && rm -f install.sh && (curl -fLk --connect-timeout 4 -o install.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/install.sh' || curl -fLk --connect-timeout 4 -o install.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' || curl -fLk --connect-timeout 4 -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh') && sh install.sh
 ```
+
+> 💡 **Mirror Acceleration for Restricted Networks (Mainland China)**:
+> If your router encounters `Couldn't resolve host 'github.com'` or download timeouts, use any of the standalone mirror commands below:
+> - **jsDelivr Global CDN (Recommended, fast & bypasses GitHub DNS issues)**:
+>   ```sh
+>   cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://cdn.jsdelivr.net/gh/XianShengXingGe/xiaomi-router-7day-refresh@main/scripts/install.sh' && sh install.sh
+>   ```
+> - **ghfast.top High-Speed Mirror**:
+>   ```sh
+>   cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://ghfast.top/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' && sh install.sh
+>   ```
+> - **ghproxy.net Fallback Mirror**:
+>   ```sh
+>   cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://ghproxy.net/https://github.com/XianShengXingGe/xiaomi-router-7day-refresh/releases/latest/download/install.sh' && sh install.sh
+>   ```
 
 #### Simple Interactive Steps:
 
