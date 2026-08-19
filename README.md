@@ -19,7 +19,7 @@
 🎉 **本项目带来的改变：**
 把所有繁琐的网络通信逻辑直接搬到家里的**小米 / OpenWrt 路由器**上！
 - ✨ **手机零负担**：iPhone 不需要安装任何代理 App，也不用常驻 VPN。
-- ✨ **只要连上 Wi-Fi 就能刷**：回家连上 Wi-Fi，打开 SideStore 点击 **Refresh** 即可秒级续签成功！
+- ✨ **连上 Wi-Fi 自动刷**：回家连上 Wi-Fi，打开 SideStore 点击 **Refresh** 即可秒级续签成功；更可以在 iOS **「快捷指令」** 中配置自动化，实现**连上 Wi-Fi 自动后台静默续签**！
 - ✨ **全家上网不受影响**：只对你指定的这台 iPhone 生效，且只处理签名刷新流量，完全不影响正常刷视频、玩游戏。
 - ✨ **支持无线中继/子路由**：即使你的小米路由只是挂在光猫或主路由下面的副路由，也能完美支持！
 
@@ -60,11 +60,12 @@ cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://github.com/XianS
 
 1. **首次激活（重要）**：
    - 安装完成后，在 iPhone 上 **关闭 Wi-Fi -> 等待 2~3 秒 -> 重新打开 Wi-Fi 连接**（让手机重新获取路由器下发的刷新路由）。
-2. **开始刷新**：
+2. **手动刷新测试**：
    - 打开 iPhone 上的 **SideStore**，点击 **Refresh All**；
    - 此时你会发现签名进度条飞速跑完，刷新成功！🎉
-3. **日常使用**：
-   - 以后只要连着家里 Wi-Fi，随时随地打开 SideStore 即可一键刷新，再也不用担心 7 天过期。
+3. **日常使用与自动后台刷新（强烈推荐）**：
+   - **手动**：连着家里 Wi-Fi 时，随时打开 SideStore 即可一键刷新。
+   - **完全无感自动刷新**：打开 iOS 自带的 **「快捷指令」App -> 「自动化」 -> 「新建个人自动化」 -> 选择「加入无线局域网」**（选择家里的 Wi-Fi，勾选「立即运行」并关闭「运行时通知」）-> 添加操作 **SideStore 的「Refresh Apps」**。这样每次回家连上 Wi-Fi，iPhone 就会在后台完全自动静默续签，彻底告别 7 天过期烦恼！
 
 ---
 
@@ -117,7 +118,7 @@ Traditional refresh methods:
 🎉 **What this project does:**
 It moves all the network loopback handling directly to your home **Xiaomi / OpenWrt router**!
 - ✨ **Zero iPhone modification**: No need for proxy apps or persistent VPN tunnels on your phone.
-- ✨ **Refresh over home Wi-Fi**: Just connect to Wi-Fi and tap **Refresh** in SideStore!
+- ✨ **Refresh over home Wi-Fi & Automate**: Just connect to Wi-Fi and tap **Refresh** in SideStore; you can even configure iOS **Shortcuts Automation** to refresh apps completely automatically in the background whenever you connect to your home Wi-Fi!
 - ✨ **Completely isolated**: Only affects the specified iPhone and SideStore refresh traffic (`10.7.0.1/32`), without affecting normal internet usage for other devices.
 - ✨ **Supports wireless repeater / AP mode**: Works seamlessly even if your Xiaomi router is a child/secondary router behind an ISP modem.
 
@@ -157,10 +158,11 @@ cd /tmp && rm -f install.sh && curl -fLk -o install.sh 'https://github.com/XianS
 
 1. **Initial Activation**:
    - Turn iPhone **Wi-Fi OFF -> Wait 2 seconds -> Turn Wi-Fi ON** to receive the new DHCP route.
-2. **Refresh**:
+2. **Manual Refresh Test**:
    - Open **SideStore** and tap **Refresh All**. The apps will refresh instantly!
-3. **Daily Routine**:
-   - Whenever you are home connected to Wi-Fi, open SideStore to refresh anytime.
+3. **Daily Routine & Background Automation (Highly Recommended)**:
+   - **Manual**: Whenever you are home connected to Wi-Fi, open SideStore to refresh anytime.
+   - **Seamless Background Automation**: Open the iOS **Shortcuts** app -> **Automation** -> **New Automation** -> Select **"Wi-Fi"** (choose your Home Wi-Fi, select "Run Immediately", disable "Notify When Run") -> Add action **SideStore: "Refresh Apps"**. Your iPhone will now refresh all sideloaded apps silently in the background whenever you return home!
 
 ---
 
