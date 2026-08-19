@@ -121,14 +121,14 @@ case "$TOPOLOGY_MODE" in
     if [ -n "$learned_if" ]; then
       ok "iPhone Wi-Fi ingress port learned: $learned_if"
     else
-      info "Waiting for iPhone DHCP Request to learn Wi-Fi port"
+      info "Waiting for iPhone connection (please toggle iPhone Wi-Fi OFF/ON once) / 等待手机接入（请在 iPhone 上开关一次 Wi-Fi）"
     fi
 
     if [ -n "$last_injected" ]; then
       ok "Latest DHCP ACK injection:"
       echo "     $last_injected"
     else
-      warn "No DHCP ACK injected yet (toggle iPhone Wi-Fi OFF/ON once)"
+      info "Ready: DHCP route will be injected automatically when iPhone connects / 就绪：手机接入时将自动注入续签路由"
     fi
     ;;
   *) fail "Unknown TOPOLOGY_MODE=$TOPOLOGY_MODE" ;;
