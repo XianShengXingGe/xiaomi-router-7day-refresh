@@ -34,11 +34,17 @@ pid_ok() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
+mask_mac() {
+  mac="$1"
+  [ -n "$mac" ] || { echo "none"; return; }
+  echo "$mac" | awk -F: '{if(NF==6) printf "%s:%s:**:**:**:%s\n", $1, $2, $6; else print "****";}'
+}
+
 echo "=================================================="
 echo " Xiaomi Router 7-Day Refresh Status"
 echo "=================================================="
 echo "Topology        : $TOPOLOGY_MODE"
-echo "iPhone MAC      : ${IPHONE_MAC:-none}"
+echo "iPhone MAC      : $(mask_mac "$IPHONE_MAC")"
 echo "Router LAN IP   : ${ROUTER_LAN_IP:-none}"
 echo "Upstream GW     : ${UPSTREAM_GATEWAY:-n/a}"
 echo "Override Target : $TARGET"

@@ -30,6 +30,11 @@ die() { echo "[ERROR] $*" >&2; exit 1; }
 
 valid_ipv4() { echo "$1" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$'; }
 valid_mac() { echo "$1" | grep -Eiq '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'; }
+mask_mac() {
+  mac="$1"
+  [ -n "$mac" ] || { echo "none"; return; }
+  echo "$mac" | awk -F: '{if(NF==6) printf "%s:%s:**:**:**:%s\n", $1, $2, $6; else print "****";}'
+}
 
 detect_lan_ip() {
   ip -4 addr show "$1" 2>/dev/null | awk '/inet / {gsub(/\/.*/,"",$2); print $2; exit}'
@@ -154,7 +159,7 @@ EOF2
   restart_dnsmasq || die "dnsmasq restart failed"
   sleep 1
   pidof dnsmasq >/dev/null 2>&1 || die "dnsmasq did not come back after restart"
-  note "main-router DHCP route injection enabled for $IPHONE_MAC"
+  note "main-router DHCP route injection enabled for $(mask_mac "$IPHONE_MAC")"
 }
 
 start_wireless_repeater() {
@@ -192,7 +197,7 @@ start_wireless_repeater() {
     -m string --algo bm --hex-string '|350105|' \
     -j DROP
   iptables -I FORWARD 1 -j "$DHCP_CHAIN"
-  note "wireless-repeater DHCP ACK patcher ready for $IPHONE_MAC"
+  note "wireless-repeater DHCP ACK patcher ready for $(mask_mac "$IPHONE_MAC")"
 }
 
 [ -x "$APP" ] || die "helper binary not found or not executable: $APP"

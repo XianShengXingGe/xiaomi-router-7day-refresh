@@ -74,6 +74,13 @@ func (r *xidRing) record(xid uint32) {
 	r.idx = (r.idx + 1) % len(r.entries)
 }
 
+func maskMAC(mac net.HardwareAddr) string {
+	if len(mac) != 6 {
+		return mac.String()
+	}
+	return fmt.Sprintf("%02x:%02x:**:**:**:%02x", mac[0], mac[1], mac[5])
+}
+
 func main() {
 	mode := flag.String("mode", "reflector", "mode: reflector or dhcp121-injector")
 	iface := flag.String("iface", defaultTunnelIf, "TUN interface name for reflector mode")

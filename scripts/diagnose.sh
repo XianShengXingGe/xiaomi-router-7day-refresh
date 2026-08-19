@@ -27,6 +27,12 @@ Usage: $0 [status|watch|watch-dhcp|watch-target|logs]
 EOF2
 }
 
+mask_mac() {
+  mac="$1"
+  [ -n "$mac" ] || { echo "none"; return; }
+  echo "$mac" | awk -F: '{if(NF==6) printf "%s:%s:**:**:**:%s\n", $1, $2, $6; else print "****";}'
+}
+
 need_tcpdump() { command -v tcpdump >/dev/null 2>&1 || { echo "[ERROR] tcpdump not installed" >&2; exit 1; }; }
 
 case "${1:-status}" in
@@ -41,7 +47,7 @@ case "${1:-status}" in
     ;;
   watch-dhcp)
     need_tcpdump
-    echo "Watching DHCP on $LANIF for iPhone MAC $IPHONE_MAC. Press Ctrl+C to stop."
+    echo "Watching DHCP on $LANIF for iPhone MAC $(mask_mac "$IPHONE_MAC"). Press Ctrl+C to stop."
     exec tcpdump -ni "$LANIF" -e -vvv -s 0 'udp port 67 or udp port 68'
     ;;
   watch-target)

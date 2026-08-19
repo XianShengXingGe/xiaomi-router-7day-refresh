@@ -42,7 +42,7 @@ func runDHCP121Injector(c dhcpConfig) {
 	defer syscall.Close(fd)
 	_ = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVBUF, 1<<20)
 
-	log.Printf("xiaomi-router-7day-refresh %s DHCP121 injector started: phone=%s target=%s/32 via %s default-via=%s", appVersion, c.phoneMAC, c.target, c.router, c.gateway)
+	log.Printf("xiaomi-router-7day-refresh %s DHCP121 injector started: phone=%s target=%s/32 via %s default-via=%s", appVersion, maskMAC(c.phoneMAC), c.target, c.router, c.gateway)
 	log.Printf("waiting for iPhone DHCP request to learn phone-facing bridge member")
 
 	installSignalExit(func() { _ = syscall.Close(fd) })

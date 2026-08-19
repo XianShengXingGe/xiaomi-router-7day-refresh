@@ -66,6 +66,12 @@ normalize_mac() {
   fi
 }
 
+mask_mac() {
+  mac="$1"
+  [ -n "$mac" ] || { echo "none"; return; }
+  echo "$mac" | awk -F: '{if(NF==6) printf "%s:%s:**:**:**:%s\n", $1, $2, $6; else print "****";}'
+}
+
 valid_ipv4() {
   ip="$1"
   echo "$ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' || return 1
@@ -225,7 +231,15 @@ main() {
   msg "提示: 在 iPhone [设置 -> 无线局域网 -> 当前Wi-Fi右侧(i)详情] 中查看 (私有无线局域网地址)" "Tip: View on iPhone in [Settings -> Wi-Fi -> (i) details] (Private Wi-Fi Address)"
   
   while :; do
-    raw_mac="$(ask "$(msg "iPhone MAC 地址" "iPhone MAC")" "$OLD_MAC")"
+    if [ -n "$OLD_MAC" ]; then
+      raw_mac="$(ask "$(msg "iPhone MAC 地址" "iPhone MAC")" "$(mask_mac "$OLD_MAC")")"
+      if [ "$raw_mac" = "$(mask_mac "$OLD_MAC")" ] || [ -z "$raw_mac" ]; then
+        IPHONE_MAC="$OLD_MAC"
+        break
+      fi
+    else
+      raw_mac="$(ask "$(msg "iPhone MAC 地址" "iPhone MAC")" "")"
+    fi
     IPHONE_MAC="$(normalize_mac "$raw_mac")"
     if valid_mac "$IPHONE_MAC"; then
       break
@@ -264,7 +278,7 @@ main() {
   msg "【步骤 3/3】配置摘要与一键安装:" "[Step 3/3] Configuration summary:"
   echo "--------------------------------------------------"
   msg "拓扑模式 (Topology)     : $TOPOLOGY_MODE" "Topology mode           : $TOPOLOGY_MODE"
-  msg "iPhone MAC 地址         : $IPHONE_MAC" "iPhone MAC address      : $IPHONE_MAC"
+  msg "iPhone MAC (已脱敏保护) : $(mask_mac "$IPHONE_MAC")" "iPhone MAC (masked)     : $(mask_mac "$IPHONE_MAC")"
   msg "本路由 LAN IP (Router)  : $ROUTER_LAN_IP" "Router LAN IP           : $ROUTER_LAN_IP"
   if [ "$TOPOLOGY_MODE" = "wireless-repeater" ]; then
     msg "上级主路由网关 (Gateway): $UPSTREAM_GATEWAY" "Upstream gateway        : $UPSTREAM_GATEWAY"
