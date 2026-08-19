@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"unsafe"
 )
 
 const (
@@ -47,6 +46,32 @@ type dhcpConfig struct {
 	router   net.IP
 	gateway  net.IP
 	bridge   string
+}
+
+type xidRing struct {
+	entries [16]struct {
+		xid uint32
+		ts  time.Time
+	}
+	idx int
+}
+
+func (r *xidRing) recentlySeen(xid uint32, window time.Duration) bool {
+	now := time.Now()
+	for i := range r.entries {
+		if r.entries[i].xid == xid && now.Sub(r.entries[i].ts) < window {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *xidRing) record(xid uint32) {
+	r.entries[r.idx] = struct {
+		xid uint32
+		ts  time.Time
+	}{xid: xid, ts: time.Now()}
+	r.idx = (r.idx + 1) % len(r.entries)
 }
 
 func main() {
@@ -119,8 +144,7 @@ func runReflector(iface string, cfg commonConfig) {
 			continue
 		}
 		pkt := buf[:n]
-		info, ok := rewriteIPv4(pkt, cfg.target)
-		if !ok {
+		if !rewriteIPv4(pkt, cfg.target) {
 			if cfg.verbose {
 				log.Printf("ignored non-target packet len=%d", n)
 			}
@@ -132,105 +156,50 @@ func runReflector(iface string, cfg commonConfig) {
 		}
 		count++
 		if cfg.verbose || count <= 20 || count%1000 == 0 {
-			log.Printf("reflector rewrote packet #%d: %s", count, info)
+			// After rewrite, pkt[12:16] is target and pkt[16:20] is phone IP.
+			log.Printf("reflector rewrote packet #%d: %d.%d.%d.%d -> %d.%d.%d.%d became %d.%d.%d.%d -> %d.%d.%d.%d proto=%d len=%d",
+				count,
+				pkt[16], pkt[17], pkt[18], pkt[19],
+				pkt[12], pkt[13], pkt[14], pkt[15],
+				pkt[12], pkt[13], pkt[14], pkt[15],
+				pkt[16], pkt[17], pkt[18], pkt[19],
+				pkt[9], len(pkt))
 		}
 	}
 }
 
-func runDHCP121Injector(c dhcpConfig) {
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, int(htons(ethPAll)))
-	if err != nil {
-		log.Fatalf("AF_PACKET socket: %v", err)
+
+func isQuickDHCPCandidate(b []byte) bool {
+	if len(b) < 14+20+8+240 {
+		return false
 	}
-	defer syscall.Close(fd)
-	_ = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVBUF, 1<<20)
-
-	log.Printf("xiaomi-router-7day-refresh %s DHCP121 injector started: phone=%s target=%s/32 via %s default-via=%s", appVersion, c.phoneMAC, c.target, c.router, c.gateway)
-	log.Printf("waiting for iPhone DHCP request to learn phone-facing bridge member")
-
-	installSignalExit(func() { _ = syscall.Close(fd) })
-
-	buf := make([]byte, 65535)
-	phoneIf := 0
-	phoneIfName := ""
-	patchedXID := map[uint32]time.Time{}
-
-	for {
-		n, sa, err := syscall.Recvfrom(fd, buf, 0)
-		if err != nil {
-			if err == syscall.EBADF || err == syscall.EINVAL {
-				return
-			}
-			log.Printf("AF_PACKET receive error: %v", err)
-			time.Sleep(100 * time.Millisecond)
-			continue
+	ethType := binary.BigEndian.Uint16(b[12:14])
+	off := 14
+	for ethType == 0x8100 || ethType == 0x88a8 {
+		if len(b) < off+4 {
+			return false
 		}
-		sll, _ := sa.(*syscall.SockaddrLinklayer)
-		if sll != nil && sll.Pkttype == packetOutgoing {
-			continue
-		}
-		if n < 300 {
-			continue
-		}
-
-		frame := append([]byte(nil), buf[:n]...)
-		p, ok := parseDHCP(frame)
-		if !ok {
-			continue
-		}
-
-		// Client Request: learn the actual Wi-Fi bridge member used by this iPhone.
-		if p.srcPort == 68 && p.dstPort == 67 && p.bootpOp == 1 && equalBytes(p.chaddr[:6], c.phoneMAC) {
-			if sll != nil {
-				name := interfaceName(sll.Ifindex)
-				if name != "" && name != c.bridge && name != "lo" && phoneIf != sll.Ifindex {
-					phoneIf = sll.Ifindex
-					phoneIfName = name
-					log.Printf("learned iPhone ingress interface: %s (ifindex=%d), xid=0x%08x", phoneIfName, phoneIf, p.xid)
-				}
-			}
-			continue
-		}
-
-		// Only patch DHCP ACKs for the selected iPhone.
-		if p.srcPort != 67 || p.dstPort != 68 || p.bootpOp != 2 || !equalBytes(p.chaddr[:6], c.phoneMAC) || p.msgType != 5 {
-			continue
-		}
-		if phoneIf == 0 {
-			log.Printf("saw DHCP ACK xid=0x%08x but phone-facing interface is not learned; reconnect Wi-Fi again", p.xid)
-			continue
-		}
-		if t, exists := patchedXID[p.xid]; exists && time.Since(t) < 3*time.Second {
-			continue
-		}
-
-		out, mergedExisting121, err := patchDHCP121(frame, p, c)
-		if err != nil {
-			log.Printf("patch DHCP ACK xid=0x%08x: %v", p.xid, err)
-			continue
-		}
-
-		// Send a unicast L2 ACK directly back to the learned iPhone-facing Wi-Fi port.
-		copy(out[0:6], c.phoneMAC)
-		var addr [8]byte
-		copy(addr[:6], c.phoneMAC)
-		to := &syscall.SockaddrLinklayer{
-			Protocol: htons(binary.BigEndian.Uint16(out[12:14])),
-			Ifindex:  phoneIf,
-			Halen:    6,
-			Addr:     addr,
-		}
-		if err := syscall.Sendto(fd, out, 0, to); err != nil {
-			log.Printf("send patched DHCP ACK on %s: %v", phoneIfName, err)
-			continue
-		}
-		patchedXID[p.xid] = time.Now()
-		if mergedExisting121 {
-			log.Printf("INJECTED DHCP ACK xid=0x%08x on %s: prepended %s/32 via %s to existing Option121 (frame %d -> %d bytes)", p.xid, phoneIfName, c.target, c.router, len(frame), len(out))
-		} else {
-			log.Printf("INJECTED DHCP ACK xid=0x%08x on %s: Option121 %s/32 via %s + default via %s (frame %d -> %d bytes)", p.xid, phoneIfName, c.target, c.router, c.gateway, len(frame), len(out))
-		}
+		ethType = binary.BigEndian.Uint16(b[off+2 : off+4])
+		off += 4
 	}
+	if ethType != 0x0800 || len(b) < off+20+8+240 {
+		return false
+	}
+	if b[off]>>4 != 4 || b[off+9] != 17 {
+		return false
+	}
+	ihl := int(b[off]&0x0f) * 4
+	if ihl < 20 || len(b) < off+ihl+8+240 {
+		return false
+	}
+	udpOff := off + ihl
+	sp := binary.BigEndian.Uint16(b[udpOff : udpOff+2])
+	dp := binary.BigEndian.Uint16(b[udpOff+2 : udpOff+4])
+	if !((sp == 67 && dp == 68) || (sp == 68 && dp == 67)) {
+		return false
+	}
+	bootp := udpOff + 8
+	return equalBytes(b[bootp+236:bootp+240], []byte{0x63, 0x82, 0x53, 0x63})
 }
 
 type dhcpPacket struct {
@@ -373,13 +342,13 @@ func patchDHCP121(frame []byte, p dhcpPacket, c dhcpConfig) ([]byte, bool, error
 	return out, mergedExisting, nil
 }
 
-func rewriteIPv4(pkt []byte, target net.IP) (string, bool) {
+func rewriteIPv4(pkt []byte, target net.IP) bool {
 	if len(pkt) < 20 || pkt[0]>>4 != 4 {
-		return "", false
+		return false
 	}
 	ihl := int(pkt[0]&0x0f) * 4
 	if ihl < 20 || len(pkt) < ihl {
-		return "", false
+		return false
 	}
 	totalLen := int(binary.BigEndian.Uint16(pkt[2:4]))
 	if totalLen < ihl || totalLen > len(pkt) {
@@ -387,11 +356,10 @@ func rewriteIPv4(pkt []byte, target net.IP) (string, bool) {
 	}
 	pkt = pkt[:totalLen]
 	if !equalIPv4(pkt[16:20], target) {
-		return "", false
+		return false
 	}
 
-	oldSrc := net.IP(pkt[12:16]).String()
-	oldDst := net.IP(pkt[16:20]).String()
+	// Swap IPv4 source and destination addresses in-place.
 	var tmp [4]byte
 	copy(tmp[:], pkt[12:16])
 	copy(pkt[12:16], pkt[16:20])
@@ -422,31 +390,9 @@ func rewriteIPv4(pkt []byte, target net.IP) (string, bool) {
 			}
 		}
 	}
-	return fmt.Sprintf("%s -> %s became %s -> %s proto=%d len=%d", oldSrc, oldDst, oldDst, oldSrc, proto, totalLen), true
+	return true
 }
 
-func openTun(name string) (*os.File, string, error) {
-	f, err := os.OpenFile(tunDevice, os.O_RDWR, 0)
-	if err != nil {
-		return nil, "", err
-	}
-	var req ifReq
-	copy(req.Name[:], []byte(name))
-	req.Flags = iffTun | iffNoPI
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), uintptr(tunSetIFF), uintptr(unsafe.Pointer(&req)))
-	if errno != 0 {
-		_ = f.Close()
-		return nil, "", errno
-	}
-	actual := string(req.Name[:])
-	for i, b := range []byte(actual) {
-		if b == 0 {
-			actual = actual[:i]
-			break
-		}
-	}
-	return f, actual, nil
-}
 
 func installSignalExit(closeFn func()) {
 	sigCh := make(chan os.Signal, 1)
@@ -482,8 +428,8 @@ func interfaceName(index int) string {
 	return i.Name
 }
 
-func checksum(data []byte) uint16 {
-	var sum uint32
+func checksumIncremental(data []byte, initial uint32) uint32 {
+	sum := initial
 	for len(data) >= 2 {
 		sum += uint32(binary.BigEndian.Uint16(data[:2]))
 		data = data[2:]
@@ -491,23 +437,31 @@ func checksum(data []byte) uint16 {
 	if len(data) == 1 {
 		sum += uint32(data[0]) << 8
 	}
+	return sum
+}
+
+func finishChecksum(sum uint32) uint16 {
 	for sum>>16 != 0 {
 		sum = (sum & 0xffff) + (sum >> 16)
 	}
 	return ^uint16(sum)
 }
 
+func checksum(data []byte) uint16 {
+	return finishChecksum(checksumIncremental(data, 0))
+}
+
 func transportChecksum(pkt []byte, ihl int, proto byte) uint16 {
-	length := len(pkt) - ihl
-	pseudo := make([]byte, 0, 12+length+1)
-	pseudo = append(pseudo, pkt[12:16]...)
-	pseudo = append(pseudo, pkt[16:20]...)
-	pseudo = append(pseudo, 0, proto, byte(length>>8), byte(length))
-	pseudo = append(pseudo, pkt[ihl:]...)
-	if len(pseudo)%2 == 1 {
-		pseudo = append(pseudo, 0)
-	}
-	return checksum(pseudo)
+	length := uint32(len(pkt) - ihl)
+	// Pseudo header: src (4) + dst (4) + zero+proto (2) + length (2)
+	sum := uint32(binary.BigEndian.Uint16(pkt[12:14])) +
+		uint32(binary.BigEndian.Uint16(pkt[14:16])) +
+		uint32(binary.BigEndian.Uint16(pkt[16:18])) +
+		uint32(binary.BigEndian.Uint16(pkt[18:20])) +
+		uint32(proto) +
+		length
+	sum = checksumIncremental(pkt[ihl:], sum)
+	return finishChecksum(sum)
 }
 
 func htons(v uint16) uint16 { return (v<<8)&0xff00 | v>>8 }

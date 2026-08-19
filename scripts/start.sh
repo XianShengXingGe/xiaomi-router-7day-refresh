@@ -82,8 +82,6 @@ remove_old_runtime() {
     while iptables -t mangle -D PREROUTING -i "$LANIF" -d "$t" -j ACCEPT 2>/dev/null; do :; done
     ip route del "$t/32" dev "$IFACE" 2>/dev/null || true
   done
-  remove_chain XRR_RELAY
-  remove_chain XRR_RELAY_TEST
   kill_pidfile "$DHCP_PIDFILE"
   kill_pidfile "$REFLECTOR_PIDFILE"
   ip link del "$IFACE" 2>/dev/null || true
@@ -113,13 +111,12 @@ start_reflector() {
   sysctl -w net.ipv4.conf.all.rp_filter=0 >/dev/null 2>&1 || true
   sysctl -w net.ipv4.conf.default.rp_filter=0 >/dev/null 2>&1 || true
   sysctl -w net.ipv4.conf."$LANIF".rp_filter=0 >/dev/null 2>&1 || true
+  sysctl -w net.ipv4.conf."$IFACE".rp_filter=0 >/dev/null 2>&1 || true
   ip link set "$IFACE" up
   ip route replace "$TARGET/32" dev "$IFACE"
   ip route flush cache 2>/dev/null || true
 
-  # Explicitly allow the narrow SideStore reflection path even when the router's
-  # general FORWARD policy is DROP, and keep proxy/TProxy/NAT chains from
-  # hijacking the synthetic peer address.
+  # Narrow SideStore reflection path bypass
   iptables -N "$REFLECT_CHAIN" 2>/dev/null || true
   iptables -F "$REFLECT_CHAIN"
   iptables -A "$REFLECT_CHAIN" -i "$LANIF" -o "$IFACE" -d "$TARGET" -j ACCEPT
@@ -129,17 +126,6 @@ start_reflector() {
   iptables -t mangle -I PREROUTING 1 -i "$LANIF" -d "$TARGET" -j ACCEPT 2>/dev/null || true
 
   note "reflector ready: $TARGET/32 -> $IFACE"
-
-}
-
-remove_main_dnsmasq_snippets() {
-  removed=0
-  for d in "$DNSMASQ_CONF_DIR" /tmp/dnsmasq.d /tmp/dnsmasq.*.d; do
-    [ -n "$d" ] || continue
-    f="$d/$DNSMASQ_SNIPPET_NAME"
-    if [ -f "$f" ]; then rm -f "$f" && removed=1; fi
-  done
-  return "$removed"
 }
 
 start_main_router() {
@@ -157,7 +143,6 @@ start_main_router() {
   if dnsmasq --help 2>&1 | grep -q 'dhcp-mac'; then
     tag_line="dhcp-mac=set:xrr_sidestore,$IPHONE_MAC"
   else
-    # Older dnsmasq builds can still tag a matching host directly.
     tag_line="dhcp-host=$IPHONE_MAC,set:xrr_sidestore"
   fi
   cat > "$snippet" <<EOF2
@@ -180,7 +165,7 @@ start_wireless_repeater() {
   iptables -m physdev -h >/dev/null 2>&1 || die "iptables physdev match unavailable"
   iptables -m string -h >/dev/null 2>&1 || die "iptables string match unavailable"
 
-  # Make sure stale main-router snippets are not left behind after topology changes.
+  # Clean stale dnsmasq snippets if switching topology
   removed=0
   for d in "$DNSMASQ_CONF_DIR" /tmp/dnsmasq.d /tmp/dnsmasq.*.d; do
     [ -n "$d" ] || continue
@@ -196,9 +181,8 @@ start_wireless_repeater() {
   echo "$pid" > "$DHCP_PIDFILE"
   wait_pid "$pid" "$DHCP_LOG" "DHCP121 injector"
 
-  # Drop only the original ACK for this iPhone. OFFER/NAK pass normally.
-  # The user-space injector has already observed the frame at AF_PACKET and sends a patched ACK directly to the phone-facing Wi-Fi port.
-  hexmac="$(echo "$IPHONE_MAC" | tr -d ':')"
+  # Drop only the original ACK for this iPhone
+  hexmac="$(echo "$IPHONE_MAC" | tr -d ':-' | tr 'A-F' 'a-f')"
   iptables -N "$DHCP_CHAIN" 2>/dev/null || true
   iptables -F "$DHCP_CHAIN"
   iptables -A "$DHCP_CHAIN" -p udp --sport 67 --dport 68 \
@@ -217,7 +201,11 @@ command -v iptables >/dev/null 2>&1 || die "iptables is required"
 [ -e /dev/net/tun ] || die "/dev/net/tun is required"
 valid_mac "$IPHONE_MAC" || die "invalid or missing IPHONE_MAC in $CONFIG"
 
-[ "$START_DELAY" -gt 0 ] 2>/dev/null && sleep "$START_DELAY"
+if [ "$START_DELAY" -gt 0 ] 2>/dev/null; then
+  note "Waiting $START_DELAY seconds for network stabilization before starting..."
+  sleep "$START_DELAY"
+fi
+
 remove_old_runtime
 start_reflector
 
@@ -229,3 +217,4 @@ esac
 
 note "service started in $TOPOLOGY_MODE mode"
 warn "If this is the first start or the iPhone renewed Wi-Fi settings, toggle iPhone Wi-Fi OFF/ON once to receive the $TARGET/32 DHCP route."
+

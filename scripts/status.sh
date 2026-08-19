@@ -22,7 +22,7 @@ DHCP_CHAIN="${DHCP_CHAIN:-XRR_DHCP121}"
 REFLECT_CHAIN="${REFLECT_CHAIN:-XRR_REFLECT}"
 DNSMASQ_SNIPPET_NAME="${DNSMASQ_SNIPPET_NAME:-$APP_NAME.conf}"
 
-ok() { echo "[OK] $*"; }
+ok() { echo "[OK]   $*"; }
 warn() { echo "[WARN] $*"; }
 fail() { echo "[FAIL] $*"; }
 info() { echo "[INFO] $*"; }
@@ -34,46 +34,52 @@ pid_ok() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
-echo "Xiaomi Router 7-Day Refresh status"
-echo "===================================="
+echo "=================================================="
+echo " Xiaomi Router 7-Day Refresh Status"
+echo "=================================================="
 echo "Topology        : $TOPOLOGY_MODE"
 echo "iPhone MAC      : ${IPHONE_MAC:-none}"
 echo "Router LAN IP   : ${ROUTER_LAN_IP:-none}"
 echo "Upstream GW     : ${UPSTREAM_GATEWAY:-n/a}"
-echo "Override target : $TARGET"
+echo "Override Target : $TARGET"
 echo "Reflector TUN   : $IFACE"
 if [ -x "$APP" ]; then
   VERSION="$($APP -version 2>/dev/null || true)"
-  [ -n "$VERSION" ] && echo "Helper version  : $VERSION"
+  [ -n "$VERSION" ] && echo "Binary Version  : $VERSION"
 fi
 echo
 
+echo "1. Core Reflector & Routing:"
+echo "----------------------------"
 if pid_ok "$REFLECTOR_PIDFILE"; then
-  ok "reflector process is running (pid $(cat "$REFLECTOR_PIDFILE"))"
+  ok "Reflector process running (PID $(cat "$REFLECTOR_PIDFILE"))"
 else
-  fail "reflector process is not running"
+  fail "Reflector process is NOT running"
 fi
+
 if ip link show "$IFACE" >/dev/null 2>&1; then
-  ok "TUN interface $IFACE exists"
+  ok "TUN interface $IFACE is UP"
 else
-  fail "TUN interface $IFACE does not exist"
+  fail "TUN interface $IFACE does NOT exist"
 fi
+
 if ip route get "$TARGET" 2>/dev/null | grep -q "$IFACE"; then
-  ok "router route $TARGET/32 uses $IFACE"
+  ok "Routing $TARGET/32 -> $IFACE confirmed"
 else
-  fail "router route $TARGET/32 does not use $IFACE"
+  fail "Routing $TARGET/32 does NOT point to $IFACE"
 fi
+
 if iptables -L "$REFLECT_CHAIN" -n >/dev/null 2>&1; then
-  ok "reflector firewall chain $REFLECT_CHAIN exists"
+  ok "Firewall bypass chain $REFLECT_CHAIN active"
 else
-  fail "reflector firewall chain $REFLECT_CHAIN missing"
+  fail "Firewall bypass chain $REFLECT_CHAIN missing"
 fi
 
 echo
 case "$TOPOLOGY_MODE" in
   main-router)
-    echo "Mode 1: main router"
-    echo "-------------------"
+    echo "2. Mode 1: Main Router DHCP Route Injection:"
+    echo "--------------------------------------------"
     command -v dnsmasq >/dev/null 2>&1 && ok "dnsmasq is available" || fail "dnsmasq missing"
     found=""
     for d in "$DNSMASQ_CONF_DIR" /tmp/dnsmasq.d /tmp/dnsmasq.*.d; do
@@ -82,55 +88,66 @@ case "$TOPOLOGY_MODE" in
       if [ -f "$f" ]; then found="$f"; break; fi
     done
     if [ -n "$found" ]; then
-      ok "targeted DHCP Option121 snippet exists: $found"
+      ok "Targeted DHCP Option121 snippet active: $found"
       sed 's/^/     /' "$found"
     else
-      fail "targeted DHCP Option121 snippet not found"
+      fail "Targeted DHCP Option121 snippet not found"
     fi
     ;;
   wireless-repeater)
-    echo "Mode 2: wireless repeater / child router"
-    echo "----------------------------------------"
+    echo "2. Mode 2: Wireless Repeater DHCP Injection:"
+    echo "--------------------------------------------"
     if pid_ok "$DHCP_PIDFILE"; then
-      ok "DHCP121 injector is running (pid $(cat "$DHCP_PIDFILE"))"
+      ok "DHCP121 injector running (PID $(cat "$DHCP_PIDFILE"))"
     else
-      fail "DHCP121 injector is not running"
+      fail "DHCP121 injector is NOT running"
     fi
+
     if [ -f /proc/sys/net/bridge/bridge-nf-call-iptables ] && [ "$(cat /proc/sys/net/bridge/bridge-nf-call-iptables 2>/dev/null)" = 1 ]; then
-      ok "bridge-nf-call-iptables=1"
+      ok "Bridge netfilter enabled (bridge-nf-call-iptables=1)"
     else
-      fail "bridge-nf-call-iptables is disabled/unavailable"
+      fail "Bridge netfilter disabled/unavailable"
     fi
-    if iptables -L "$DHCP_CHAIN" -n -v -x >/tmp/xrr-status.$$ 2>/dev/null; then
-      ok "DHCP ACK interception chain $DHCP_CHAIN exists"
-      cat /tmp/xrr-status.$$ | sed 's/^/     /'
+
+    if iptables -L "$DHCP_CHAIN" -n >/dev/null 2>&1; then
+      ok "DHCP ACK interception chain $DHCP_CHAIN active"
     else
       fail "DHCP ACK interception chain $DHCP_CHAIN missing"
     fi
-    rm -f /tmp/xrr-status.$$
-    if grep -q 'INJECTED DHCP ACK' "$DHCP_LOG" 2>/dev/null; then
-      ok "at least one patched DHCP ACK has been injected"
-      grep 'INJECTED DHCP ACK' "$DHCP_LOG" | tail -3
+
+    # Extract learned physical Wi-Fi interface and last DHCP injection
+    learned_if="$(grep 'learned iPhone ingress interface:' "$DHCP_LOG" 2>/dev/null | tail -1 | awk '{for(i=1;i<=NF;i++) if($i=="interface:") print $(i+1)}')"
+    last_injected="$(grep 'INJECTED DHCP ACK' "$DHCP_LOG" 2>/dev/null | tail -1)"
+    if [ -n "$learned_if" ]; then
+      ok "iPhone Wi-Fi ingress port learned: $learned_if"
     else
-      warn "no patched DHCP ACK logged yet; toggle iPhone Wi-Fi OFF/ON once"
-      tail -10 "$DHCP_LOG" 2>/dev/null || true
+      info "Waiting for iPhone DHCP Request to learn Wi-Fi port"
+    fi
+
+    if [ -n "$last_injected" ]; then
+      ok "Latest DHCP ACK injection:"
+      echo "     $last_injected"
+    else
+      warn "No DHCP ACK injected yet (toggle iPhone Wi-Fi OFF/ON once)"
     fi
     ;;
-  *) fail "unknown TOPOLOGY_MODE=$TOPOLOGY_MODE" ;;
+  *) fail "Unknown TOPOLOGY_MODE=$TOPOLOGY_MODE" ;;
 esac
 
 echo
-echo "Recent reflector log"
-echo "--------------------"
-if grep -q 'reflector rewrote packet #' "$LOG" 2>/dev/null; then
-  ok "SideStore override packets have reached the router and been reflected"
-  grep 'reflector rewrote packet #' "$LOG" | tail -5
+echo "3. Live Traffic & Reflector Activity:"
+echo "-------------------------------------"
+last_rewrite="$(grep 'reflector rewrote packet #' "$LOG" 2>/dev/null | tail -1)"
+if [ -n "$last_rewrite" ]; then
+  pkt_num="$(echo "$last_rewrite" | awk -F'#' '{print $2}' | awk -F':' '{print $1}')"
+  ok "Active: Total reflected packets: #$pkt_num"
+  echo "     Latest: $last_rewrite"
 else
-  warn "no reflected SideStore packet logged yet"
-  tail -10 "$LOG" 2>/dev/null || true
+  info "Idle: No SideStore traffic reflected yet (open SideStore and tap Refresh)"
 fi
 
 echo
-echo "Expected phone route after DHCP:"
-echo "  $TARGET/32 -> next-hop $ROUTER_LAN_IP"
-echo "If this is the first start, toggle iPhone Wi-Fi OFF/ON once and then try SideStore Refresh."
+echo "=================================================="
+echo "Next step: Toggle iPhone Wi-Fi OFF/ON once, then open SideStore -> Refresh."
+echo "=================================================="
+

@@ -4,12 +4,13 @@ import (
 	"encoding/binary"
 	"net"
 	"testing"
+	"time"
 )
 
 func TestRewriteIPv4Reflector(t *testing.T) {
 	pkt := makeTCPPacket(t, net.IPv4(192, 0, 2, 100), net.IPv4(10, 7, 0, 1), 50797, 12345)
-	info, ok := rewriteIPv4(pkt, net.IPv4(10, 7, 0, 1).To4())
-	if !ok || info == "" {
+	ok := rewriteIPv4(pkt, net.IPv4(10, 7, 0, 1).To4())
+	if !ok {
 		t.Fatalf("rewrite failed")
 	}
 	if got := net.IP(pkt[12:16]).String(); got != "10.7.0.1" {
@@ -23,6 +24,41 @@ func TestRewriteIPv4Reflector(t *testing.T) {
 	}
 	if transportChecksum(pkt, 20, 6) != 0 {
 		t.Fatalf("bad TCP checksum")
+	}
+}
+
+func TestQuickDHCPCandidateFilter(t *testing.T) {
+	dhcpAck := makeDHCPAck(t, false)
+	if !isQuickDHCPCandidate(dhcpAck) {
+		t.Fatalf("expected valid DHCP frame to pass candidate filter")
+	}
+
+	nonDHCP := append([]byte(nil), dhcpAck...)
+	// Change UDP dst port from 68 to 80 (HTTP)
+	nonDHCP[36], nonDHCP[37] = 0, 80
+	if isQuickDHCPCandidate(nonDHCP) {
+		t.Fatalf("expected non-DHCP UDP port 80 to be filtered out")
+	}
+
+	nonIP := append([]byte(nil), dhcpAck...)
+	// Change EtherType to ARP (0x0806)
+	nonIP[12], nonIP[13] = 0x08, 0x06
+	if isQuickDHCPCandidate(nonIP) {
+		t.Fatalf("expected ARP packet to be filtered out")
+	}
+}
+
+func TestXIDRing(t *testing.T) {
+	var ring xidRing
+	if ring.recentlySeen(0x12345678, time.Second) {
+		t.Fatalf("empty ring should not match xid")
+	}
+	ring.record(0x12345678)
+	if !ring.recentlySeen(0x12345678, time.Second) {
+		t.Fatalf("recorded xid should be recently seen")
+	}
+	if ring.recentlySeen(0x99999999, time.Second) {
+		t.Fatalf("unrecorded xid should not be seen")
 	}
 }
 

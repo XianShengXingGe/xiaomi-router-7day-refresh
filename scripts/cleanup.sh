@@ -48,8 +48,6 @@ for t in "$TARGET" "$LEGACY_TARGET"; do
   while iptables -t nat -D PREROUTING -i "$LANIF" -d "$t" -j RETURN 2>/dev/null; do :; done
   while iptables -t mangle -D PREROUTING -i "$LANIF" -d "$t" -j ACCEPT 2>/dev/null; do :; done
 done
-remove_chain XRR_RELAY
-remove_chain XRR_RELAY_TEST
 kill_pidfile "$DHCP_PIDFILE"
 
 # Remove only our dnsmasq snippet, wherever the active OpenWrt dnsmasq instance placed its conf-dir.
