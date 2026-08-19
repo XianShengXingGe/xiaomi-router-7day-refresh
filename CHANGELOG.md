@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0
+
+- 🎉 **Official 1.0 Milestone Release**: Full-featured, production-ready release for dual-topology SideStore 7-day refresh.
+- **Extreme Performance & Zero-Alloc**: Rewrote transport checksum calculations with RFC 1071 associative properties, implemented fast pre-filtering for `AF_PACKET`, and bounded XID ring buffers to eliminate memory growth and router GC load.
+- **Bilingual & 3-Step Simplified Installer**: Streamlined installation from 8 steps down to 3 steps with smart auto-detection, auto-start service management, and English/Chinese language selection.
+- **Multi-Route Domestic Mirror Acceleration**: Built-in jsDelivr global CDN and domestic mirror nodes (`ghfast.top`, `ghproxy.net`) with automatic race/fallback for seamless downloads in mainland China.
+- **Enhanced Observability & Privacy Protection**: Full MAC address masking (`mask_mac`) across all logs, status panels, and interactive prompts. Clear Wi-Fi reconnection guidance without misleading warnings.
+- **Shortcuts Background Automation**: Documented iOS Shortcuts integration for 100% silent, background refresh upon connecting to home Wi-Fi.
+
 ## 0.5.3-public
 
 - Optimized TUN reflector with zero-allocation RFC 1071 checksum calculation and hot-path allocation reduction.
