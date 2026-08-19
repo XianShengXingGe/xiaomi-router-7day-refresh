@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.3-public
+
+- Optimized TUN reflector with zero-allocation RFC 1071 checksum calculation and hot-path allocation reduction.
+- Implemented zero-allocation fast pre-filter on `AF_PACKET` to discard high-throughput non-DHCP LAN traffic instantly.
+- Replaced unbounded XID map with bounded 16-slot ring buffer to prevent memory leakage.
+- Completely redesigned `install.sh` with bilingual (Chinese/English) prompts, smart auto-detection, and a simplified 3-step quick installation flow.
+- Added domestic GitHub mirror acceleration fallback in `install.sh` and `upgrade.sh`.
+- Upgraded `status.sh` with live metrics: cumulative reflected packet counts, last active timestamps, and learned Wi-Fi ports.
+- Cleaned up obsolete internal handoff files (`CODEX_GITHUB_HANDOFF.md`, `PUBLIC_RELEASE_NOTES.md`).
+
 ## 0.5.2-public
 
 - Added a self-updating `upgrade.sh` that downloads the latest GitHub `install.sh` before running it.
